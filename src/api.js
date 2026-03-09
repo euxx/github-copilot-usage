@@ -114,7 +114,7 @@ async function fetchUsage(token) {
 
 function getNextMonthReset() {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 /** @param {string} code @param {string} message */
