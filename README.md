@@ -2,6 +2,11 @@
 
 Shows Copilot Premium request quota usage (e.g., `25%`) in the VS Code status bar.
 
+| | | |
+| :---: | :---: | :---: |
+| <img src=".github/assets/normal.png" alt="Normal (25%)" width="280"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="280"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="280"> |
+| Normal | Warning | Critical |
+
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
