@@ -22,11 +22,11 @@ let deactivated = false;
  */
 async function activate(context) {
   deactivated = false;
-  // Right, 100: just to the right of chat.statusBarEntry (Copilot icon, internal priority ~100.1)
+  // Right, 100.099999: position adjacent to chat.statusBarEntry (Copilot icon, priority 100.1)
   statusBarItem = vscode.window.createStatusBarItem(
     'github-copilot-usage',
     vscode.StatusBarAlignment.Right,
-    100
+    100.099999
   );
   statusBarItem.name = 'GitHub Copilot Usage';
   context.subscriptions.push(statusBarItem);
