@@ -9,6 +9,7 @@
     "type": "git",
     "url": "https://github.com/euxx/github-copilot-usage"
   },
+  "icon": "images/icon.png",
   "keywords": [
     "github",
     "copilot",

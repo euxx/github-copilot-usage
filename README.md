@@ -1,6 +1,10 @@
 # GitHub Copilot Usage
 
-Shows Copilot Premium request quota usage (e.g., `25%`) in the VS Code status bar.
+<img src="images/icon.png" width="100" alt="GitHub Copilot Usage" align="left">
+
+<div>
+  <p>Shows Copilot Premium request quota usage (e.g., <code>25%</code>) in the VS Code status bar.</p>
+</div>
 
 | | | |
 | :---: | :---: | :---: |
