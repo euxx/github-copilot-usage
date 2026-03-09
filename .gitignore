@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build
+*.vsix
+out/
+
+# IDE / OS
+.DS_Store
+*.log
+.idea/
+*.swp
+*.swo
