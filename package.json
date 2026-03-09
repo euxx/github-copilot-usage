@@ -1,0 +1,54 @@
+{
+  "name": "github-copilot-usage",
+  "displayName": "GitHub Copilot Usage",
+  "description": "Show GitHub Copilot Premium requests usage in the status bar.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "githubCopilotUsage.refresh",
+        "title": "Copilot Usage: Refresh Now"
+      },
+      {
+        "command": "githubCopilotUsage.login",
+        "title": "Copilot Usage: Sign in with GitHub"
+      }
+    ],
+    "configuration": {
+      "title": "GitHub Copilot Usage",
+      "properties": {
+        "githubCopilotUsage.refreshIntervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Auto-refresh interval in minutes."
+        },
+        "githubCopilotUsage.warningThreshold": {
+          "type": "number",
+          "default": 75,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Usage percentage at which the status bar text turns yellow."
+        },
+        "githubCopilotUsage.criticalThreshold": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Usage percentage at which the status bar text turns red."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo 'No build step required'"
+  }
+}
