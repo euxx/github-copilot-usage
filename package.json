@@ -32,7 +32,7 @@
         "title": "Copilot Usage: Refresh Now"
       },
       {
-        "command": "githubCopilotUsage.login",
+        "command": "githubCopilotUsage.signIn",
         "title": "Copilot Usage: Sign in with GitHub"
       }
     ],

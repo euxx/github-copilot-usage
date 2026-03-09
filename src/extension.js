@@ -13,7 +13,7 @@ let lastData = null;
 /** @type {boolean} */
 let refreshInFlight = false;
 /** @type {boolean} */
-let pendingPromptLogin = false;
+let pendingSignIn = false;
 /** @type {boolean} */
 let deactivated = false;
 
@@ -33,7 +33,7 @@ async function activate(context) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('githubCopilotUsage.refresh', () => refresh()),
-    vscode.commands.registerCommand('githubCopilotUsage.login', () => refresh(true)),
+    vscode.commands.registerCommand('githubCopilotUsage.signIn', () => refresh(true)),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('githubCopilotUsage')) {
         resetTimer();
@@ -42,7 +42,7 @@ async function activate(context) {
     }),
   );
 
-  await refresh(true); // prompt for GitHub login on startup if no session
+  await refresh(true); // prompt for GitHub sign-in on startup if no session
   resetTimer();
 }
 
@@ -57,23 +57,23 @@ function deactivate() {
 // ---------------------------------------------------------------------------
 
 /**
- * @param {boolean} [promptLogin]
+ * @param {boolean} [promptSignIn]
  */
-async function refresh(promptLogin = false) {
+async function refresh(promptSignIn = false) {
   if (deactivated) return;
-  if (promptLogin) pendingPromptLogin = true; // record intent even if in-flight
+  if (promptSignIn) pendingSignIn = true; // record intent even if in-flight
   if (refreshInFlight) return;
 
-  const doPromptLogin = pendingPromptLogin;
-  pendingPromptLogin = false;
+  const doSignIn = pendingSignIn;
+  pendingSignIn = false;
   refreshInFlight = true;
   showLoading();
   try {
     let session;
     try {
       session = await vscode.authentication.getSession('github', ['user:email', 'read:user'], {
-        silent: !doPromptLogin,
-        createIfNone: doPromptLogin,
+        silent: !doSignIn,
+        createIfNone: doSignIn,
       });
     } catch {
       // User cancelled the sign-in prompt (createIfNone: true throws on cancel)
@@ -111,8 +111,8 @@ async function refresh(promptLogin = false) {
     }
   } finally {
     refreshInFlight = false;
-    if (pendingPromptLogin) {
-      // A login was requested while the previous request was in-flight; honour it now.
+    if (pendingSignIn) {
+      // A sign-in was requested while the previous request was in-flight; honour it now.
       setTimeout(() => refresh(), 0);
     }
   }
@@ -211,7 +211,7 @@ function showNoAuth() {
   renderStatus({
     text: 'Sign in',
     tooltip: 'Click to sign in with GitHub',
-    command: 'githubCopilotUsage.login',
+    command: 'githubCopilotUsage.signIn',
   });
 }
 
