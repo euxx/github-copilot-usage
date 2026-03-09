@@ -4,7 +4,7 @@
 
 After modifying code, ensure to run the following commands to maintain code quality:
 
-- `npm run ci` - Run all checks (lint + format check)
+- `npm run ci` - Run all checks (tests + lint + format check)
 
 Or run individually:
 

@@ -13,7 +13,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./extension.js",
+  "main": "./src/extension.js",
   "contributes": {
     "commands": [
       {
@@ -54,10 +54,10 @@
   },
   "scripts": {
     "vscode:prepublish": "echo 'No build step required'",
-    "lint": "eslint extension.js api.js tests/",
-    "lint:fix": "eslint extension.js api.js tests/ --fix",
-    "format": "prettier --write \"*.js\" \"tests/**/*.js\"",
-    "format:check": "prettier --check \"*.js\" \"tests/**/*.js\"",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
     "test": "vitest run",
     "ci": "npm run test && npm run lint && npm run format:check",
     "prepare": "husky"

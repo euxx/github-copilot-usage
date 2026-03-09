@@ -1,6 +1,6 @@
 'use strict';
 
-const { fetchUsage } = require('../api');
+const { fetchUsage } = require('../src/api');
 
 // Helper: build a minimal mock Response
 const mockRes = (status, data) => ({

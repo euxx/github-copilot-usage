@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use strict';
 
-const { version } = require('./package.json');
+const { version } = require('../package.json');
 
 const PLAN_MAP = {
   free: 'Free',
