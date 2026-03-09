@@ -54,11 +54,12 @@
   },
   "scripts": {
     "vscode:prepublish": "echo 'No build step required'",
-    "lint": "eslint extension.js api.js",
-    "lint:fix": "eslint extension.js api.js --fix",
-    "format": "prettier --write \"*.js\"",
-    "format:check": "prettier --check \"*.js\"",
-    "ci": "npm run lint && npm run format:check",
+    "lint": "eslint extension.js api.js tests/",
+    "lint:fix": "eslint extension.js api.js tests/ --fix",
+    "format": "prettier --write \"*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"*.js\" \"tests/**/*.js\"",
+    "test": "vitest run",
+    "ci": "npm run test && npm run lint && npm run format:check",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -68,9 +69,13 @@
     "globals": "^15.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.js": ["eslint --fix", "prettier --write"]
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }

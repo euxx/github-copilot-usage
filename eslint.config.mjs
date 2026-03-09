@@ -52,6 +52,16 @@ export default [
     },
   },
   {
+    // Test files configuration
+    files: ['tests/**/*.js', '**/*.test.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+  },
+  {
     ignores: ['node_modules/'],
   },
   // Disable ESLint rules that conflict with Prettier (must be last)
