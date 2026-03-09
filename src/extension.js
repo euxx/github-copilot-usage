@@ -42,7 +42,6 @@ async function activate(context) {
     }),
   );
 
-  showLoading();
   await refresh(true); // prompt for GitHub login on startup if no session
   resetTimer();
 }
