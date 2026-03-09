@@ -1,11 +1,11 @@
 # GitHub Copilot Usage
 
-Displays GitHub Copilot Premium requests usage in the VS Code status bar, right next to the Copilot icon.
+Shows Copilot Premium request quota usage (e.g., `25%`) in the VS Code status bar.
 
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
-- **Hover tooltip**: plan, used / quota, reset date
+- **Hover tooltip**: plan, used / quota, overage (if any), reset date
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 
@@ -17,14 +17,10 @@ Displays GitHub Copilot Premium requests usage in the VS Code status bar, right 
 | `75%` (yellow) | Warning threshold reached |
 | `90%` (red) | Critical threshold reached |
 | `∞` | Unlimited plan |
-| `—` | Plan has no premium quota (e.g. Free) |
-| _(spinner)_ | Loading |
+| `—` | No premium quota data (plan has no tracked limit) |
 | `Sign in` | Not signed in — click to sign in |
+| _(spinner)_ | Loading |
 | _(error icon)_ | API / network error |
-
-## Requirements
-
-Sign in to VS Code with your GitHub account (Account menu → bottom-left).
 
 ## Settings
 
@@ -34,11 +30,6 @@ Sign in to VS Code with your GitHub account (Account menu → bottom-left).
 | `githubCopilotUsage.warningThreshold` | `75` | Yellow warning threshold (%) |
 | `githubCopilotUsage.criticalThreshold` | `90` | Red critical threshold (%) |
 
-## Commands
+## License
 
-- **Copilot Usage: Refresh Now** — force refresh immediately
-- **Copilot Usage: Sign in with GitHub** — trigger GitHub sign-in
-
-## Usage
-
-Hover over the status bar item to see full details. Use the **$(refresh) icon** in the tooltip or run **Copilot Usage: Refresh Now** from the Command Palette to refresh manually.
+MIT © [euxx](https://github.com/euxx)
