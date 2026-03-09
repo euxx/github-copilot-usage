@@ -3,6 +3,17 @@
   "displayName": "GitHub Copilot Usage",
   "description": "Show GitHub Copilot Premium requests usage in the status bar.",
   "version": "0.1.0",
+  "author": "euxx",
+  "license": "MIT",
+  "keywords": [
+    "github",
+    "copilot",
+    "usage",
+    "quota",
+    "status-bar",
+    "vscode",
+    "vscode-extension"
+  ],
   "publisher": "local",
   "engines": {
     "vscode": "^1.85.0"
