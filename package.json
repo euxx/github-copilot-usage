@@ -7,8 +7,12 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
@@ -54,13 +58,19 @@
     "lint:fix": "eslint extension.js api.js --fix",
     "format": "prettier --write \"*.js\"",
     "format:check": "prettier --check \"*.js\"",
-    "ci": "npm run lint && npm run format:check"
+    "ci": "npm run lint && npm run format:check",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "globals": "^15.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
     "prettier": "^3.0.0"
+  },
+  "lint-staged": {
+    "*.js": ["eslint --fix", "prettier --write"]
   }
 }
