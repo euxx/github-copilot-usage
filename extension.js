@@ -26,7 +26,7 @@ async function activate(context) {
   statusBarItem = vscode.window.createStatusBarItem(
     'github-copilot-usage',
     vscode.StatusBarAlignment.Right,
-    100.099999
+    100.099999,
   );
   statusBarItem.name = 'GitHub Copilot Usage';
   context.subscriptions.push(statusBarItem);
@@ -39,11 +39,11 @@ async function activate(context) {
         resetTimer();
         refresh();
       }
-    })
+    }),
   );
 
   showLoading();
-  await refresh(true);  // prompt for GitHub login on startup if no session
+  await refresh(true); // prompt for GitHub login on startup if no session
   resetTimer();
 }
 
@@ -62,7 +62,7 @@ function deactivate() {
  */
 async function refresh(promptLogin = false) {
   if (deactivated) return;
-  if (promptLogin) pendingPromptLogin = true;   // record intent even if in-flight
+  if (promptLogin) pendingPromptLogin = true; // record intent even if in-flight
   if (refreshInFlight) return;
 
   const doPromptLogin = pendingPromptLogin;
@@ -72,11 +72,10 @@ async function refresh(promptLogin = false) {
   try {
     let session;
     try {
-      session = await vscode.authentication.getSession(
-        'github',
-        ['user:email', 'read:user'],
-        { silent: !doPromptLogin, createIfNone: doPromptLogin }
-      );
+      session = await vscode.authentication.getSession('github', ['user:email', 'read:user'], {
+        silent: !doPromptLogin,
+        createIfNone: doPromptLogin,
+      });
     } catch {
       // User cancelled the sign-in prompt (createIfNone: true throws on cancel)
       showNoAuth();
@@ -177,8 +176,11 @@ function buildTooltip(data, isRateLimited) {
       md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
     }
     const resetStr = data.resetDate.toLocaleString(undefined, {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
     md.appendMarkdown('Reset: ');
     md.appendText(resetStr);

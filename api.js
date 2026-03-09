@@ -94,7 +94,7 @@ async function fetchUsage(token) {
     throw makeError('API_ERROR', 'Invalid percent_remaining from GitHub API');
   }
   const usedPct = Math.max(0, Math.round((100 - percentRemaining) * 10) / 10);
-  const used = entitlement > 0 ? Math.max(0, Math.round(entitlement * (100 - percentRemaining) / 100)) : 0;
+  const used = entitlement > 0 ? Math.max(0, Math.round((entitlement * (100 - percentRemaining)) / 100)) : 0;
 
   const rawResetDate = data.quota_reset_date ? new Date(data.quota_reset_date) : null;
   const resetDate = rawResetDate && !isNaN(rawResetDate.getTime()) ? rawResetDate : getNextMonthReset();

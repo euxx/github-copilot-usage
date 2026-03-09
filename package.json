@@ -49,6 +49,18 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "echo 'No build step required'"
+    "vscode:prepublish": "echo 'No build step required'",
+    "lint": "eslint extension.js api.js",
+    "lint:fix": "eslint extension.js api.js --fix",
+    "format": "prettier --write \"*.js\"",
+    "format:check": "prettier --check \"*.js\"",
+    "ci": "npm run lint && npm run format:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "globals": "^15.0.0",
+    "prettier": "^3.0.0"
   }
 }
