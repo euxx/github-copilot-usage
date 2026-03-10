@@ -11,25 +11,29 @@
    npm install  # sync package-lock.json
    ```
 
-3. Commit and tag:
+3. Commit and push:
    ```sh
    git add CHANGELOG.md package.json package-lock.json
    git commit -m "chore: update version to vX.Y.Z"
-   git tag vX.Y.Z
-   git push origin main --tags
+   git push origin main
    ```
 
-4. Publish the extension:
+4. Run the release workflow:
    ```sh
-   npx @vscode/vsce publish
+   gh workflow run release.yml
    ```
-   Or package for manual upload:
+   This will run tests, package the extension as `.vsix`, and create a GitHub Release with the file attached.
+
+5. Verify the release was created successfully:
    ```sh
-   npx @vscode/vsce package
-   # Output: github-copilot-usage-X.Y.Z.vsix
+   gh release view vX.Y.Z
    ```
 
-5. Create a GitHub Release (once a remote is configured):
+6. Update the release notes on GitHub to match `CHANGELOG.md`:
    ```sh
-   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <(grep -A50 "## \[X.Y.Z\]" CHANGELOG.md | sed -n '1,/^## \[/{ /^## \[X/d; /^## \[/q; p }')
+   gh release edit vX.Y.Z --notes "## What's Changed
+   - Change 1
+   - Change 2
+
+   **Full Changelog**: https://github.com/euxx/github-copilot-usage/compare/vPREV...vX.Y.Z"
    ```
