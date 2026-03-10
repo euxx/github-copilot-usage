@@ -55,3 +55,21 @@ Tests use [Vitest](https://vitest.dev/) and mock `fetch` globally — no network
 - **Auth**: VS Code `authentication.getSession('github', ...)` — uses the user's existing GitHub session; cancellation handled gracefully via inner try/catch
 - **Auto-refresh**: Configurable interval (1–60 min, default 5 min) via `githubCopilotUsage.refreshIntervalMinutes`
 - **Status bar position**: Priority `100.099999` — places the indicator just to the right of the Copilot icon (`chat.statusBarEntry` at `100.1`)
+
+## Local Packaging
+
+To build a `.vsix` file for local installation:
+
+```bash
+npx @vscode/vsce package --no-dependencies
+```
+
+This generates `github-copilot-usage-<version>.vsix` in the project root.
+
+To install it locally in VS Code:
+
+```bash
+code --install-extension github-copilot-usage-<version>.vsix
+```
+
+Or in VS Code: **Extensions** → **···** (top-right) → **Install from VSIX…**
