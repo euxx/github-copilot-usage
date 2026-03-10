@@ -146,10 +146,12 @@ function updateStatusBar(data, isRateLimited = false) {
 
   const pct = data.usedPct;
   let color;
-  if (pct >= cfg.criticalThreshold) {
-    color = new vscode.ThemeColor('editorError.foreground');
-  } else if (pct >= cfg.warningThreshold) {
-    color = new vscode.ThemeColor('editorWarning.foreground');
+  if (cfg.thresholdEnabled) {
+    if (pct >= cfg.thresholdCritical) {
+      color = new vscode.ThemeColor('editorError.foreground');
+    } else if (pct >= cfg.thresholdWarning) {
+      color = new vscode.ThemeColor('editorWarning.foreground');
+    }
   }
 
   renderStatus({ text: `${pct}%`, tooltip: buildTooltip(data, isRateLimited), color });
@@ -171,9 +173,10 @@ function buildTooltip(data, isRateLimited) {
     md.appendMarkdown('Quota: Unlimited\n\n');
   } else {
     const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
-    const warnPct = cfg.get('warningThreshold', 75);
-    const critPct = cfg.get('criticalThreshold', 90);
-    const dot = data.usedPct >= critPct ? '🔴' : data.usedPct >= warnPct ? '🟡' : '🟢';
+    const thresholdEnabled = cfg.get('threshold.enabled', true);
+    const warnPct = cfg.get('threshold.warning', 75);
+    const critPct = cfg.get('threshold.critical', 90);
+    const dot = thresholdEnabled ? (data.usedPct >= critPct ? '🔴' : data.usedPct >= warnPct ? '🟡' : '🟢') : '🟢';
     md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) ${dot}\n\n`);
     if (data.overageEnabled && data.overageUsed > 0) {
       md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
@@ -256,13 +259,14 @@ function clearTimer() {
 
 function getConfig() {
   const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
-  const warning = cfg.get('warningThreshold', 75);
-  const critical = cfg.get('criticalThreshold', 90);
+  const warning = cfg.get('threshold.warning', 75);
+  const critical = cfg.get('threshold.critical', 90);
   return {
     refreshIntervalMinutes: cfg.get('refreshIntervalMinutes', 5),
+    thresholdEnabled: cfg.get('threshold.enabled', true),
     // Clamp warning to at most critical so misconfiguration (warning > critical) degrades gracefully.
-    warningThreshold: Math.min(warning, critical),
-    criticalThreshold: critical,
+    thresholdWarning: Math.min(warning, critical),
+    thresholdCritical: critical,
   };
 }
 
