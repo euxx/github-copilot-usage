@@ -32,8 +32,8 @@ async function activate(context) {
   context.subscriptions.push(statusBarItem);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('githubCopilotUsage.refresh', () => refresh()),
-    vscode.commands.registerCommand('githubCopilotUsage.signIn', () => refresh(true)),
+    vscode.commands.registerCommand('githubCopilotUsage.refresh', () => refresh(false, true)),
+    vscode.commands.registerCommand('githubCopilotUsage.signIn', () => refresh(true, true)),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('githubCopilotUsage')) {
         resetTimer();
@@ -58,8 +58,9 @@ function deactivate() {
 
 /**
  * @param {boolean} [promptSignIn]
+ * @param {boolean} [isManual] Only show loading indicator for user-initiated refreshes.
  */
-async function refresh(promptSignIn = false) {
+async function refresh(promptSignIn = false, isManual = false) {
   if (deactivated) return;
   if (promptSignIn) pendingSignIn = true; // record intent even if in-flight
   if (refreshInFlight) return;
@@ -67,7 +68,7 @@ async function refresh(promptSignIn = false) {
   const doSignIn = pendingSignIn;
   pendingSignIn = false;
   refreshInFlight = true;
-  showLoading();
+  if (isManual) showLoading();
   try {
     let session;
     try {
