@@ -5,6 +5,8 @@
   <p>e.g., <code>25%</code> normal · <code>75%</code> yellow warning · <code>95%</code> red critical.</p>
 </div>
 
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue?logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=euxx.github-copilot-usage)
+
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
