@@ -1,7 +1,5 @@
 # GitHub Copilot Usage
 
-<img src="images/icon.png" width="70" alt="GitHub Copilot Usage" align="left">
-
 <div>
   <p>Shows Copilot Premium request quota usage in the VS Code status bar, right next to the Copilot icon.</p>
   <p>e.g., <code>25%</code> normal · <code>75%</code> yellow warning · <code>95%</code> red critical.</p>
@@ -16,7 +14,7 @@
 
 | | | |
 | :---: | :---: | :---: |
-| <img src=".github/assets/normal.png" alt="Normal (25%)" width="280"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="280"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="280"> |
+| <img src=".github/assets/normal.png" alt="Normal (25%)" width="190"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="190"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="190"> |
 | Normal | Warning | Critical |
 
 ## Status bar states
@@ -31,14 +29,6 @@
 | `Sign in` | Not signed in — click to sign in |
 | _(spinner)_ | Loading |
 | _(error icon)_ | API / network error |
-
-## Settings
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `githubCopilotUsage.refreshIntervalMinutes` | `5` | Auto-refresh interval (1–60 min) |
-| `githubCopilotUsage.warningThreshold` | `75` | Yellow warning threshold (%) |
-| `githubCopilotUsage.criticalThreshold` | `90` | Red critical threshold (%) |
 
 ## License
 
