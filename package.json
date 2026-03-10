@@ -19,7 +19,7 @@
     "vscode",
     "vscode-extension"
   ],
-  "publisher": "local",
+  "publisher": "euxx",
   "engines": {
     "vscode": "^1.85.0"
   },
