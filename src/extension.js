@@ -170,7 +170,11 @@ function buildTooltip(data, isRateLimited) {
   if (data.unlimited) {
     md.appendMarkdown('Quota: Unlimited\n\n');
   } else {
-    md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%)\n\n`);
+    const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
+    const warnPct = cfg.get('warningThreshold', 75);
+    const critPct = cfg.get('criticalThreshold', 90);
+    const dot = data.usedPct >= critPct ? '🔴' : data.usedPct >= warnPct ? '🟡' : '🟢';
+    md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) ${dot}\n\n`);
     if (data.overageEnabled && data.overageUsed > 0) {
       md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
     }
