@@ -1,15 +1,11 @@
 # GitHub Copilot Usage
 
-<img src="images/icon.png" width="100" alt="GitHub Copilot Usage" align="left">
+<img src="images/icon.png" width="70" alt="GitHub Copilot Usage" align="left">
 
 <div>
-  <p>Shows Copilot Premium request quota usage (e.g., <code>25%</code>) in the VS Code status bar.</p>
+  <p>Shows Copilot Premium request quota usage in the VS Code status bar, right next to the Copilot icon.</p>
+  <p>e.g., <code>25%</code> normal · <code>75%</code> yellow warning · <code>95%</code> red critical.</p>
 </div>
-
-| | | |
-| :---: | :---: | :---: |
-| <img src=".github/assets/normal.png" alt="Normal (25%)" width="280"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="280"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="280"> |
-| Normal | Warning | Critical |
 
 ## Features
 
@@ -17,6 +13,11 @@
 - **Hover tooltip**: plan, used / quota, overage (if any), reset date
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
+
+| | | |
+| :---: | :---: | :---: |
+| <img src=".github/assets/normal.png" alt="Normal (25%)" width="280"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="280"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="280"> |
+| Normal | Warning | Critical |
 
 ## Status bar states
 
@@ -41,4 +42,4 @@
 
 ## License
 
-MIT © [euxx](https://github.com/euxx)
+Under the [MIT](LICENSE) License.
