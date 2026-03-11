@@ -126,6 +126,8 @@ async function refresh(promptSignIn = false, isManual = false) {
 // Status bar rendering
 // ---------------------------------------------------------------------------
 
+const BILLING_URL = 'https://github.com/settings/billing/premium_requests_usage';
+
 /**
  * @param {import('./api').UsageData} data
  * @param {boolean} [isRateLimited]
@@ -140,7 +142,7 @@ function updateStatusBar(data, isRateLimited = false) {
     if (isRateLimited) md.appendMarkdown('\n\n_(Rate limited — showing last known data)_');
     md.appendMarkdown('\n\n');
     if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
-    md.appendMarkdown('[$(refresh)](command:githubCopilotUsage.refresh)');
+    md.appendMarkdown(`[$(refresh)](command:githubCopilotUsage.refresh) &nbsp;[$(graph)](${BILLING_URL})`);
     renderStatus({ text: '—', tooltip: md });
     return;
   }
@@ -178,12 +180,7 @@ function buildTooltip(data, isRateLimited) {
   if (data.unlimited) {
     md.appendMarkdown('Quota: Unlimited\n\n');
   } else {
-    const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
-    const thresholdEnabled = cfg.get('threshold.enabled', true);
-    const warnPct = cfg.get('threshold.warning', 75);
-    const critPct = cfg.get('threshold.critical', 90);
-    const dot = thresholdEnabled ? (data.usedPct >= critPct ? '🔴' : data.usedPct >= warnPct ? '🟡' : '🟢') : '🟢';
-    md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) ${dot}\n\n`);
+    md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`);
     if (data.overageEnabled && data.overageUsed > 0) {
       md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
     }
