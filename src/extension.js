@@ -10,6 +10,8 @@ let statusBarItem;
 let refreshTimer;
 /** @type {import('./api').UsageData | null} */
 let lastData = null;
+/** @type {Date | null} */
+let lastUpdatedAt = null;
 /** @type {boolean} */
 let refreshInFlight = false;
 /** @type {boolean} */
@@ -89,6 +91,7 @@ async function refresh(promptSignIn = false, isManual = false) {
 
     const data = await fetchUsage(session.accessToken);
     lastData = data;
+    lastUpdatedAt = new Date();
     updateStatusBar(data);
   } catch (err) {
     const code = err?.code;
@@ -135,7 +138,9 @@ function updateStatusBar(data, isRateLimited = false) {
     md.isTrusted = { enabledCommands: ['githubCopilotUsage.refresh'] };
     md.appendText(`No premium quota · Plan: ${data.plan}`);
     if (isRateLimited) md.appendMarkdown('\n\n_(Rate limited — showing last known data)_');
-    md.appendMarkdown('\n\n[$(refresh)](command:githubCopilotUsage.refresh)');
+    md.appendMarkdown('\n\n');
+    if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
+    md.appendMarkdown('[$(refresh)](command:githubCopilotUsage.refresh)');
     renderStatus({ text: '—', tooltip: md });
     return;
   }
@@ -198,8 +203,20 @@ function buildTooltip(data, isRateLimited) {
     md.appendMarkdown('_(Rate limited — showing last known data)_\n\n');
   }
 
+  if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
   md.appendMarkdown('[$(refresh)](command:githubCopilotUsage.refresh)');
   return md;
+}
+
+/** @param {Date} date @returns {string} yyyy-MM-dd HH:mm:ss, or HH:mm:ss if today */
+function formatTimestamp(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  if (sameDay) return time;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`;
 }
 
 function showLoading() {
