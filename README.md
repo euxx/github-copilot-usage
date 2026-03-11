@@ -10,7 +10,7 @@
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
-- **Hover tooltip**: plan, used / quota, overage (if any), reset date
+- **Hover tooltip**: plan, used / quota, overage (if any), reset date, last-updated timestamp — with a refresh button and a link to [Premium request analytics](https://github.com/settings/billing/premium_requests_usage)
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 
