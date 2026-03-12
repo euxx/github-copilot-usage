@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.1] - 2026-03-12
+
+- Packaging: exclude dev files (tests, configs, dotfiles) from the published extension
+
 ## [0.3.0] - 2026-03-11
 
 - ⏱️ Show last-updated timestamp in tooltip (`Updated at HH:mm:ss`, or full date across days)
