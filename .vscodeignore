@@ -1,0 +1,13 @@
+.gitignore
+.prettierignore
+.prettierrc
+.husky/
+.github/
+.vscode/
+eslint.config.mjs
+vitest.config.mjs
+tests/
+AGENTS.md
+RELEASE.md
+*.vsix
+node_modules/
