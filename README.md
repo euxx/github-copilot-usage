@@ -14,6 +14,7 @@
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 
+<!-- prettier-ignore -->
 | | | |
 | :---: | :---: | :---: |
 | <img src=".github/assets/normal.png" alt="Normal (25%)" width="190"> | <img src=".github/assets/warning.png" alt="Warning (75%)" width="190"> | <img src=".github/assets/critical.png" alt="Critical (95%)" width="190"> |
@@ -21,16 +22,16 @@
 
 ## Status bar states
 
-| Display | Meaning |
-|---------|---------|
-| `25%` | Normal usage |
-| `75%` (yellow) | Warning threshold reached |
-| `90%` (red) | Critical threshold reached |
-| `∞` | Unlimited plan |
-| `—` | No premium quota data (plan has no tracked limit) |
-| `Sign in` | Not signed in — click to sign in |
-| _(spinner)_ | Loading |
-| _(error icon)_ | API / network error |
+| Display        | Meaning                                           |
+| -------------- | ------------------------------------------------- |
+| `25%`          | Normal usage                                      |
+| `75%` (yellow) | Warning threshold reached                         |
+| `90%` (red)    | Critical threshold reached                        |
+| `∞`            | Unlimited plan                                    |
+| `—`            | No premium quota data (plan has no tracked limit) |
+| `Sign in`      | Not signed in — click to sign in                  |
+| _(spinner)_    | Loading                                           |
+| _(error icon)_ | API / network error                               |
 
 ## License
 
