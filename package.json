@@ -98,12 +98,15 @@
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.js": [
+    "*.{js,mjs}": [
       "eslint --fix",
       "prettier --write"
     ],
     "*.md": [
       "prettier --write --prose-wrap preserve"
+    ],
+    "*.{yml,yaml}": [
+      "prettier --write"
     ]
   }
 }

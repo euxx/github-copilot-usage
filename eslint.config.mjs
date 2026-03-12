@@ -37,10 +37,7 @@ export default [
       'no-return-assign': ['error', 'except-parens'],
       'no-self-compare': 'error',
       'no-throw-literal': 'error',
-      'no-unused-expressions': [
-        'error',
-        { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: true },
-      ],
+      'no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: true }],
       'no-useless-return': 'error',
 
       // Modern JavaScript
@@ -49,6 +46,13 @@ export default [
       'prefer-template': 'warn',
       'prefer-promise-reject-errors': 'error',
       'no-duplicate-imports': 'error',
+    },
+  },
+  {
+    // Config files use ES module syntax
+    files: ['*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
     },
   },
   {
