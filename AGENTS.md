@@ -14,3 +14,4 @@ Or run individually:
 - `npm run format:check` - Check formatting without writing
 
 Refer to [DEVELOPMENT.md](DEVELOPMENT.md) for project setup, scripts, and technical details.
+Refer to [RELEASE.md](RELEASE.md) for the release process and versioning conventions.
