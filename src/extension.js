@@ -102,7 +102,11 @@ async function refresh(promptSignIn = false, isManual = false) {
     } else if (code === 'RATE_LIMIT') {
       if (lastData) {
         // Keep last data but mark tooltip
-        updateStatusBar(lastData, true);
+        try {
+          updateStatusBar(lastData, true);
+        } catch {
+          showError('Rate limited');
+        }
       } else {
         showError('Rate limited');
       }
@@ -274,8 +278,11 @@ function clearTimer() {
 
 function getConfig() {
   const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
-  const warning = cfg.get('threshold.warning', 75);
-  const critical = cfg.get('threshold.critical', 90);
+  const rawWarning = cfg.get('threshold.warning', 75);
+  const rawCritical = cfg.get('threshold.critical', 90);
+  // Coerce to number and fall back to defaults if non-numeric (e.g. user entered a string)
+  const warning = Number.isFinite(Number(rawWarning)) ? Number(rawWarning) : 75;
+  const critical = Number.isFinite(Number(rawCritical)) ? Number(rawCritical) : 90;
   return {
     refreshIntervalMinutes: cfg.get('refreshIntervalMinutes', 5),
     thresholdEnabled: cfg.get('threshold.enabled', true),
@@ -285,4 +292,4 @@ function getConfig() {
   };
 }
 
-module.exports = { activate, deactivate };
+module.exports = { activate, deactivate, formatTimestamp, getConfig, buildTooltip };
