@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.2] - 2026-03-13
+
+- Update icon image to a clearer version
+- Fix: `threshold.warning`/`threshold.critical` values now coerced to numbers — non-numeric config strings (e.g. `"off"`) no longer produce `NaN` and silently break status bar coloring
+- Fix: rate-limit handler no longer lets `updateStatusBar` errors escape as unhandled promise rejections
+- Add unit tests for `formatTimestamp`, `getConfig`, and `buildTooltip`
+
 ## [0.3.1] - 2026-03-12
 
 - Packaging: exclude dev files (tests, configs, dotfiles) from the published extension
