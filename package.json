@@ -2,7 +2,7 @@
   "name": "github-copilot-usage",
   "displayName": "GitHub Copilot Usage",
   "description": "Show GitHub Copilot Premium requests usage in the status bar.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": "euxx",
   "license": "MIT",
   "repository": {
