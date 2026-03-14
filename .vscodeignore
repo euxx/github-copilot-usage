@@ -7,7 +7,12 @@
 eslint.config.mjs
 vitest.config.mjs
 tests/
+scripts/
 AGENTS.md
+DEVELOPMENT.md
+PLAN.md
 RELEASE.md
 *.vsix
 node_modules/
+package-lock.json
+images/icon.svg

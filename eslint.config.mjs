@@ -56,7 +56,7 @@ export default [
     },
   },
   {
-    // Test files configuration
+    // Test files use CommonJS (require) for source modules; vitest globals are injected
     files: ['tests/**/*.js', '**/*.test.js'],
     languageOptions: {
       globals: {
