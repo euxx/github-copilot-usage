@@ -2,16 +2,10 @@
 
 ## After Making Changes
 
-After modifying code, ensure to run the following commands to maintain code quality:
+After modifying code, run:
 
-- `npm run ci` - Run all checks (tests + lint + format check)
+- `npm run ci` — tests + lint + format check
 
-Or run individually:
+See [DEVELOPMENT.md](DEVELOPMENT.md) for all available scripts.
 
-- `npm run lint` - Lint code (ESLint)
-- `npm run lint:fix` - Lint and auto-fix
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check formatting without writing
-
-Refer to [DEVELOPMENT.md](DEVELOPMENT.md) for project setup, scripts, and technical details.
-Refer to [RELEASE.md](RELEASE.md) for the release process and versioning conventions.
+See [RELEASE.md](RELEASE.md) for the release process.
