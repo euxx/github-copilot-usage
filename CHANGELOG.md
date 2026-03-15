@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.0] - 2026-03-15
+
+### Added
+
+- **Offline graceful degradation**: when the network is unavailable, the last known usage data is preserved in the
+  status bar instead of showing an error icon
+- **Stale data indicator**: a `$(warning)` suffix is appended to the status bar text after 1 hour offline (e.g.
+  `25% ⚠`), signalling that cached data may be outdated
+- **Rate-limit resilience**: when rate-limited by the API, last known data is likewise preserved with a tooltip
+  notice instead of showing a red error icon
+- **`$(alert)` icon** when offline or rate-limited with no cached data available (consistent with VS Code's own
+  offline status bar behaviour)
+
+### Changed
+
+- Tooltip notices ("Offline · data may be outdated", "Rate limit · data may be outdated") are now plain text,
+  positioned as the last line of the tooltip
+- Unlimited plan tooltip now includes a link to Premium request analytics
+- README: updated status bar states table with the new states and Unicode icon representations
+
 ## [0.3.3] - 2026-03-14
 
 ### Changed
