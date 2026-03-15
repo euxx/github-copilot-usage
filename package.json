@@ -92,6 +92,7 @@
     "@eslint/js": "latest",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
+    "eslint-plugin-prettier": "latest",
     "globals": "latest",
     "husky": "latest",
     "lint-staged": "latest",
