@@ -1,6 +1,6 @@
 'use strict';
 
-const { formatTimestamp, getConfig, buildTooltip } = require('../src/extension');
+const { formatTimestamp, getConfig, buildTooltip, computeIsStale, _setState, _getState } = require('../src/extension');
 
 // ---------------------------------------------------------------------------
 // formatTimestamp
@@ -112,12 +112,29 @@ describe('buildTooltip', () => {
 
   it('includes rate-limit notice when isRateLimited is true', () => {
     const md = buildTooltip(BASE_DATA, true);
-    expect(md.value).toContain('Rate limited');
+    expect(md.value).toContain('Rate limit');
   });
 
   it('does not include rate-limit notice when isRateLimited is false', () => {
     const md = buildTooltip(BASE_DATA, false);
-    expect(md.value).not.toContain('Rate limited');
+    expect(md.value).not.toContain('Rate limit');
+  });
+
+  it('shows offline notice when isOfflineState is true but not stale', () => {
+    const md = buildTooltip(BASE_DATA, false, true, false);
+    expect(md.value).toContain('Offline');
+    expect(md.value).not.toContain('1 h');
+  });
+
+  it('shows offline/stale notice when isStale is true', () => {
+    const md = buildTooltip(BASE_DATA, false, true, true);
+    expect(md.value).toContain('Offline');
+    expect(md.value).toContain('outdated');
+  });
+
+  it('shows no offline notice when isOfflineState and isStale are both false', () => {
+    const md = buildTooltip(BASE_DATA, false, false, false);
+    expect(md.value).not.toContain('Offline');
   });
 
   it('includes overage count when overageEnabled and overageUsed > 0', () => {
@@ -129,5 +146,75 @@ describe('buildTooltip', () => {
   it('omits overage section when overageUsed is 0', () => {
     const md = buildTooltip(BASE_DATA, false);
     expect(md.value).not.toContain('Overage');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeIsStale — pure staleness helper
+// ---------------------------------------------------------------------------
+
+describe('computeIsStale', () => {
+  const HOUR_MS = 60 * 60 * 1000;
+
+  it('returns false when not offline', () => {
+    const since = new Date(Date.now() - HOUR_MS - 1);
+    expect(computeIsStale(false, since)).toBe(false);
+  });
+
+  it('returns false when offline but offlineSince is null', () => {
+    expect(computeIsStale(true, null)).toBe(false);
+  });
+
+  it('returns false when offline for less than 1 hour', () => {
+    const since = new Date(Date.now() - 30 * 60 * 1000); // 30 min ago
+    expect(computeIsStale(true, since)).toBe(false);
+  });
+
+  it('returns false when offline for exactly 1 hour (boundary)', () => {
+    const since = new Date(Date.now() - HOUR_MS); // exactly 1h — not ">" yet
+    expect(computeIsStale(true, since)).toBe(false);
+  });
+
+  it('returns true when offline for more than 1 hour', () => {
+    const since = new Date(Date.now() - HOUR_MS - 1); // 1h + 1ms
+    expect(computeIsStale(true, since)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isOffline / offlineSince state transitions (via _setState / _getState)
+// ---------------------------------------------------------------------------
+
+describe('offline state transitions', () => {
+  afterEach(() => {
+    // Reset module state after each test so they don't bleed into each other.
+    _setState({ isOffline: false, offlineSince: null, lastData: null, lastUpdatedAt: null });
+  });
+
+  it('initial state: isOffline false, offlineSince null', () => {
+    const state = _getState();
+    expect(state.isOffline).toBe(false);
+    expect(state.offlineSince).toBeNull();
+  });
+
+  it('_setState sets isOffline and offlineSince independently', () => {
+    const since = new Date();
+    _setState({ isOffline: true, offlineSince: since });
+    const state = _getState();
+    expect(state.isOffline).toBe(true);
+    expect(state.offlineSince).toBe(since);
+  });
+
+  it('going offline is not stale immediately (offlineSince just set)', () => {
+    _setState({ isOffline: true, offlineSince: new Date() });
+    const { isOffline, offlineSince } = _getState();
+    expect(computeIsStale(isOffline, offlineSince)).toBe(false);
+  });
+
+  it('becomes stale only after offlineSince is >1 h in the past', () => {
+    const since = new Date(Date.now() - 61 * 60 * 1000);
+    _setState({ isOffline: true, offlineSince: since });
+    const { isOffline, offlineSince } = _getState();
+    expect(computeIsStale(isOffline, offlineSince)).toBe(true);
   });
 });

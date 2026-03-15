@@ -22,16 +22,18 @@
 
 ## Status bar states
 
-| Display        | Meaning                                           |
-| -------------- | ------------------------------------------------- |
-| `25%`          | Normal usage                                      |
-| `75%` (yellow) | Warning threshold reached                         |
-| `90%` (red)    | Critical threshold reached                        |
-| `∞`            | Unlimited plan                                    |
-| `—`            | No premium quota data (plan has no tracked limit) |
-| `Sign in`      | Not signed in — click to sign in                  |
-| _(spinner)_    | Loading                                           |
-| _(error icon)_ | API / network error                               |
+| Display        | Meaning                                            |
+| -------------- | -------------------------------------------------- |
+| `25%`          | Normal usage                                       |
+| `75%` (yellow) | Warning threshold reached                          |
+| `90%` (red)    | Critical threshold reached                         |
+| `∞`            | Unlimited plan                                     |
+| `—`            | No premium quota data (plan has no tracked limit)  |
+| `25% ⚠`        | Last known data — offline for > 1 hour             |
+| `⚠`            | Offline or rate limited — no cached data available |
+| `Sign in`      | Not signed in — click to sign in                   |
+| `⟳`            | Loading                                            |
+| `✕`            | Server error or access denied                      |
 
 ## License
 

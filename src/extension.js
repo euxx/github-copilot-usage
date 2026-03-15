@@ -18,6 +18,10 @@ let refreshInFlight = false;
 let pendingSignIn = false;
 /** @type {boolean} */
 let deactivated = false;
+/** @type {boolean} */
+let isOffline = false;
+/** @type {Date | null} */
+let offlineSince = null;
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -50,6 +54,8 @@ async function activate(context) {
 
 function deactivate() {
   deactivated = true;
+  isOffline = false;
+  offlineSince = null;
   statusBarItem?.hide();
   clearTimer();
 }
@@ -80,11 +86,15 @@ async function refresh(promptSignIn = false, isManual = false) {
       });
     } catch {
       // User cancelled the sign-in prompt (createIfNone: true throws on cancel)
+      isOffline = false;
+      offlineSince = null;
       showNoAuth();
       return;
     }
 
     if (!session) {
+      isOffline = false;
+      offlineSince = null;
       showNoAuth();
       return;
     }
@@ -92,9 +102,18 @@ async function refresh(promptSignIn = false, isManual = false) {
     const data = await fetchUsage(session.accessToken);
     lastData = data;
     lastUpdatedAt = new Date();
+    isOffline = false;
+    offlineSince = null;
     updateStatusBar(data);
   } catch (err) {
     const code = err?.code;
+
+    // Any error that reached the server means we are online — clear offline state.
+    if (code !== 'NETWORK_ERROR' && code !== 'TIMEOUT') {
+      isOffline = false;
+      offlineSince = null;
+    }
+
     if (code === 'AUTH') {
       showNoAuth();
     } else if (code === 'FORBIDDEN') {
@@ -105,15 +124,26 @@ async function refresh(promptSignIn = false, isManual = false) {
         try {
           updateStatusBar(lastData, true);
         } catch {
-          showError('Rate limited');
+          renderStatus({ text: '$(alert)', tooltip: 'Copilot Usage: Rate limited' });
         }
       } else {
-        showError('Rate limited');
+        renderStatus({ text: '$(alert)', tooltip: 'Copilot Usage: Rate limited' });
       }
     } else if (code === 'SERVER_ERROR') {
       showError('API error (5xx)');
     } else if (code === 'NETWORK_ERROR' || code === 'TIMEOUT') {
-      showError('Network error');
+      if (!isOffline) {
+        isOffline = true;
+        offlineSince = new Date();
+      }
+      if (lastData) {
+        updateStatusBar(lastData);
+      } else {
+        renderStatus({
+          text: '$(alert)',
+          tooltip: 'Copilot Usage: Offline',
+        });
+      }
     } else {
       showError('Network / API error');
     }
@@ -138,21 +168,25 @@ const BILLING_URL = 'https://github.com/settings/billing/premium_requests_usage'
  */
 function updateStatusBar(data, isRateLimited = false) {
   const cfg = getConfig();
+  const isStale = computeIsStale(isOffline, offlineSince);
+  const staleIcon = isStale ? ' $(warning)' : '';
 
   if (data.noData) {
     const md = new vscode.MarkdownString('', true);
     md.isTrusted = { enabledCommands: ['githubCopilotUsage.refresh'] };
-    md.appendText(`No premium quota · Plan: ${data.plan}`);
-    if (isRateLimited) md.appendMarkdown('\n\n_(Rate limited — showing last known data)_');
-    md.appendMarkdown('\n\n');
+    md.appendMarkdown('**GitHub Copilot Usage**\n\nPlan: ');
+    md.appendText(data.plan);
+    md.appendMarkdown(`\n\nNo premium quota &nbsp;[$(graph)](${BILLING_URL})\n\n`);
     if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
-    md.appendMarkdown(`[$(refresh)](command:githubCopilotUsage.refresh) &nbsp;[$(graph)](${BILLING_URL})`);
-    renderStatus({ text: '—', tooltip: md });
+    md.appendMarkdown(`[$(refresh)](command:githubCopilotUsage.refresh)`);
+    if (isRateLimited) md.appendMarkdown('\n\nRate limit \u00b7 data may be outdated');
+    if (isStale || isOffline) md.appendMarkdown('\n\nOffline \u00b7 data may be outdated');
+    renderStatus({ text: `\u2014${staleIcon}`, tooltip: md });
     return;
   }
 
   if (data.unlimited) {
-    renderStatus({ text: '∞', tooltip: buildTooltip(data, isRateLimited) });
+    renderStatus({ text: `\u221e${staleIcon}`, tooltip: buildTooltip(data, isRateLimited, isOffline, isStale) });
     return;
   }
 
@@ -166,15 +200,21 @@ function updateStatusBar(data, isRateLimited = false) {
     }
   }
 
-  renderStatus({ text: `${pct}%`, tooltip: buildTooltip(data, isRateLimited), color });
+  renderStatus({
+    text: `${pct}%${staleIcon}`,
+    tooltip: buildTooltip(data, isRateLimited, isOffline, isStale),
+    color,
+  });
 }
 
 /**
  * @param {import('./api').UsageData} data
  * @param {boolean} isRateLimited
+ * @param {boolean} [isOfflineState]
+ * @param {boolean} [isStale]
  * @returns {vscode.MarkdownString}
  */
-function buildTooltip(data, isRateLimited) {
+function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = false) {
   const md = new vscode.MarkdownString('', true);
   md.isTrusted = { enabledCommands: ['githubCopilotUsage.refresh'] };
   md.appendMarkdown('**GitHub Copilot Usage**\n\nPlan: ');
@@ -182,7 +222,7 @@ function buildTooltip(data, isRateLimited) {
   md.appendMarkdown('\n\n');
 
   if (data.unlimited) {
-    md.appendMarkdown('Quota: Unlimited\n\n');
+    md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
   } else {
     md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`);
     if (data.overageEnabled && data.overageUsed > 0) {
@@ -200,12 +240,14 @@ function buildTooltip(data, isRateLimited) {
     md.appendMarkdown('\n\n');
   }
 
-  if (isRateLimited) {
-    md.appendMarkdown('_(Rate limited — showing last known data)_\n\n');
-  }
-
   if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
   md.appendMarkdown('[$(refresh)](command:githubCopilotUsage.refresh)');
+  if (isRateLimited) {
+    md.appendMarkdown('\n\nRate limit \u00b7 data may be outdated');
+  }
+  if (isStale || isOfflineState) {
+    md.appendMarkdown('\n\nOffline \u00b7 data may be outdated');
+  }
   return md;
 }
 
@@ -292,4 +334,29 @@ function getConfig() {
   };
 }
 
-module.exports = { activate, deactivate, formatTimestamp, getConfig, buildTooltip };
+/**
+ * Pure helper: returns true only when offline for > 1 h.
+ * @param {boolean} offline
+ * @param {Date | null} since
+ * @returns {boolean}
+ */
+function computeIsStale(offline, since) {
+  return offline && since !== null && Date.now() - since.getTime() > 60 * 60 * 1000;
+}
+
+module.exports = {
+  activate,
+  deactivate,
+  formatTimestamp,
+  getConfig,
+  buildTooltip,
+  computeIsStale,
+  // Test-only: inspect and mutate module-level state.
+  _setState: (s) => {
+    if ('isOffline' in s) isOffline = s.isOffline;
+    if ('offlineSince' in s) offlineSince = s.offlineSince;
+    if ('lastData' in s) lastData = s.lastData;
+    if ('lastUpdatedAt' in s) lastUpdatedAt = s.lastUpdatedAt;
+  },
+  _getState: () => ({ isOffline, offlineSince }),
+};
