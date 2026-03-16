@@ -1,6 +1,17 @@
 'use strict';
 
-const { formatTimestamp, getConfig, buildTooltip, computeIsStale, _setState, _getState } = require('../src/extension');
+const {
+  formatTimestamp,
+  getConfig,
+  buildTooltip,
+  computeIsStale,
+  _setState,
+  _getState,
+  _startRecoveryTimer,
+  _clearRecoveryTimer,
+  _resetTimer,
+  _clearTimer,
+} = require('../src/extension');
 
 // ---------------------------------------------------------------------------
 // formatTimestamp
@@ -216,5 +227,77 @@ describe('offline state transitions', () => {
     _setState({ isOffline: true, offlineSince: since });
     const { isOffline, offlineSince } = _getState();
     expect(computeIsStale(isOffline, offlineSince)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Recovery timer lifecycle
+// ---------------------------------------------------------------------------
+
+describe('recovery timer', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Reset all state and ensure no timer is running.
+    _setState({ isOffline: false, offlineSince: null, lastData: null, lastUpdatedAt: null });
+    _clearRecoveryTimer(); // may call resetTimer internally
+    _clearTimer(); // ensure normal refresh timer is also cleared
+  });
+
+  afterEach(() => {
+    _clearRecoveryTimer(); // may call resetTimer internally
+    _clearTimer(); // clear any refreshTimer left by resetTimer()
+    vi.useRealTimers();
+  });
+
+  it('startRecoveryTimer pauses the normal refresh timer (refreshTimerActive = false)', () => {
+    _startRecoveryTimer();
+    expect(_getState().refreshTimerActive).toBe(false);
+  });
+
+  it('calling startRecoveryTimer twice does not create a second timer', () => {
+    _startRecoveryTimer();
+    const spy = vi.spyOn(global, 'setTimeout');
+    _startRecoveryTimer();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('clearRecoveryTimer sets recoveryTimerActive = false', () => {
+    _startRecoveryTimer();
+    _clearRecoveryTimer();
+    expect(_getState().recoveryTimerActive).toBe(false);
+  });
+
+  it('clearRecoveryTimer restores the normal refresh timer (refreshTimerActive = true)', () => {
+    _startRecoveryTimer();
+    _clearRecoveryTimer();
+    expect(_getState().refreshTimerActive).toBe(true);
+  });
+
+  it('clearRecoveryTimer when no timer is active is a no-op', () => {
+    expect(() => _clearRecoveryTimer()).not.toThrow();
+    expect(_getState().recoveryTimerActive).toBe(false);
+  });
+
+  it('resetTimer is a no-op while recovery mode is active (no competing timer)', () => {
+    _startRecoveryTimer();
+    expect(_getState().refreshTimerActive).toBe(false);
+    // Simulate onDidChangeConfiguration calling resetTimer while offline.
+    _resetTimer();
+    // Should still have only the recovery timer — no competing normal refresh timer.
+    expect(_getState().refreshTimerActive).toBe(false);
+    expect(_getState().recoveryTimerActive).toBe(true);
+  });
+
+  it('timer callback stops recovery and restores normal timer when back online', async () => {
+    // isOffline is already false (default) — simulates connection restored before first tick.
+    _startRecoveryTimer();
+    expect(_getState().recoveryTimerActive).toBe(true);
+
+    // Advance past the 10 s interval; the callback runs, sees !isOffline, stops recovery.
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(_getState().recoveryTimerActive).toBe(false);
+    expect(_getState().refreshTimerActive).toBe(true);
   });
 });

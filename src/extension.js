@@ -22,6 +22,10 @@ let deactivated = false;
 let isOffline = false;
 /** @type {Date | null} */
 let offlineSince = null;
+/** @type {NodeJS.Timeout | undefined} */
+let recoveryTimer;
+/** @type {boolean} */
+let recoveryActive = false;
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -58,6 +62,7 @@ function deactivate() {
   offlineSince = null;
   statusBarItem?.hide();
   clearTimer();
+  clearRecoveryTimer();
 }
 
 // ---------------------------------------------------------------------------
@@ -104,6 +109,7 @@ async function refresh(promptSignIn = false, isManual = false) {
     lastUpdatedAt = new Date();
     isOffline = false;
     offlineSince = null;
+    clearRecoveryTimer();
     updateStatusBar(data);
   } catch (err) {
     const code = err?.code;
@@ -112,6 +118,7 @@ async function refresh(promptSignIn = false, isManual = false) {
     if (code !== 'NETWORK_ERROR' && code !== 'TIMEOUT') {
       isOffline = false;
       offlineSince = null;
+      clearRecoveryTimer();
     }
 
     if (code === 'AUTH') {
@@ -135,6 +142,7 @@ async function refresh(promptSignIn = false, isManual = false) {
       if (!isOffline) {
         isOffline = true;
         offlineSince = new Date();
+        startRecoveryTimer();
       }
       if (lastData) {
         updateStatusBar(lastData);
@@ -300,6 +308,7 @@ function renderStatus({ text, tooltip, command = undefined, color = undefined })
 // ---------------------------------------------------------------------------
 
 function resetTimer() {
+  if (recoveryActive) return; // recovery mode owns the schedule; don't create a competing timer
   clearTimer();
   const { refreshIntervalMinutes } = getConfig();
   const n = Number(refreshIntervalMinutes);
@@ -312,6 +321,42 @@ function clearTimer() {
     clearInterval(refreshTimer);
     refreshTimer = undefined;
   }
+}
+
+const RECOVERY_INTERVAL_MS = 10 * 1000; // 10 s
+
+function startRecoveryTimer() {
+  if (recoveryActive) return; // already running
+  clearTimer(); // pause normal refresh while in recovery mode
+  recoveryActive = true;
+  _scheduleNextRecovery();
+}
+
+/** Schedule one recovery attempt after RECOVERY_INTERVAL_MS.
+ *  After the attempt completes (success, error, or timeout), reschedules itself
+ *  if still in recovery mode — giving a clean 10 s gap after every outcome.
+ */
+function _scheduleNextRecovery() {
+  recoveryTimer = setTimeout(async () => {
+    recoveryTimer = undefined; // this timeout has fired
+    if (!recoveryActive) return; // clearRecoveryTimer() was called while we were waiting
+    if (!isOffline) {
+      clearRecoveryTimer();
+      return;
+    }
+    await refresh().catch(() => {}); // refresh() handles errors internally; .catch prevents stuck recovery on unexpected throw
+    if (recoveryActive) _scheduleNextRecovery(); // still offline → retry in 10 s
+  }, RECOVERY_INTERVAL_MS);
+}
+
+function clearRecoveryTimer() {
+  if (!recoveryActive) return;
+  recoveryActive = false;
+  if (recoveryTimer) {
+    clearTimeout(recoveryTimer);
+    recoveryTimer = undefined;
+  }
+  if (!deactivated) resetTimer(); // restore normal refresh schedule
 }
 
 // ---------------------------------------------------------------------------
@@ -358,5 +403,15 @@ module.exports = {
     if ('lastData' in s) lastData = s.lastData;
     if ('lastUpdatedAt' in s) lastUpdatedAt = s.lastUpdatedAt;
   },
-  _getState: () => ({ isOffline, offlineSince }),
+  _getState: () => ({
+    isOffline,
+    offlineSince,
+    recoveryTimerActive: recoveryActive,
+    refreshTimerActive: !!refreshTimer,
+  }),
+  // Test-only: directly invoke timer lifecycle.
+  _startRecoveryTimer: startRecoveryTimer,
+  _clearRecoveryTimer: clearRecoveryTimer,
+  _resetTimer: resetTimer,
+  _clearTimer: clearTimer,
 };
