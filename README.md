@@ -29,11 +29,11 @@
 | `90%` (red)    | Critical threshold reached                         |
 | `∞`            | Unlimited plan                                     |
 | `—`            | No premium quota data (plan has no tracked limit)  |
-| `25% ⚠`        | Last known data — offline for > 1 hour             |
-| `⚠`            | Offline or rate limited — no cached data available |
-| `Sign in`      | Not signed in — click to sign in                   |
 | `⟳`            | Loading                                            |
 | `✕`            | Server error or access denied                      |
+| `⚠`            | Offline or rate limited — no cached data available |
+| `25% ⚠`        | Last known data — offline for > 1 hour             |
+| `Sign in`      | Not signed in — click to sign in                   |
 
 ## License
 
