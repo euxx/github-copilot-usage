@@ -168,6 +168,19 @@ async function refresh(promptSignIn = false, isManual = false) {
 // Status bar rendering
 // ---------------------------------------------------------------------------
 
+/**
+ * Compute the display percentage for the status bar.
+ * When overage is active, returns the actual total (e.g. 111 when 11% over quota).
+ * @param {import('./api').UsageData} data
+ * @returns {number}
+ */
+function computeDisplayPct(data) {
+  if (data.overageEnabled && data.overageUsed > 0 && data.quota > 0) {
+    return Math.round(100 + (data.overageUsed / data.quota) * 100);
+  }
+  return data.usedPct;
+}
+
 const BILLING_URL = 'https://github.com/settings/billing/premium_requests_usage';
 
 /**
@@ -198,7 +211,7 @@ function updateStatusBar(data, isRateLimited = false) {
     return;
   }
 
-  const pct = data.usedPct;
+  const pct = computeDisplayPct(data);
   let color;
   if (cfg.thresholdEnabled) {
     if (pct >= cfg.thresholdCritical) {
@@ -396,6 +409,7 @@ module.exports = {
   getConfig,
   buildTooltip,
   computeIsStale,
+  computeDisplayPct,
   // Test-only: inspect and mutate module-level state.
   _setState: (s) => {
     if ('isOffline' in s) isOffline = s.isOffline;

@@ -5,6 +5,7 @@ const {
   getConfig,
   buildTooltip,
   computeIsStale,
+  computeDisplayPct,
   _setState,
   _getState,
   _startRecoveryTimer,
@@ -299,5 +300,38 @@ describe('recovery timer', () => {
 
     expect(_getState().recoveryTimerActive).toBe(false);
     expect(_getState().refreshTimerActive).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeDisplayPct
+// ---------------------------------------------------------------------------
+
+describe('computeDisplayPct', () => {
+  const base = { usedPct: 70, quota: 100, overageEnabled: false, overageUsed: 0 };
+
+  it('returns usedPct when no overage', () => {
+    expect(computeDisplayPct({ ...base, usedPct: 70 })).toBe(70);
+  });
+
+  it('returns usedPct when overageEnabled but overageUsed is 0', () => {
+    expect(computeDisplayPct({ ...base, overageEnabled: true, overageUsed: 0 })).toBe(70);
+  });
+
+  it('returns usedPct when overageUsed > 0 but overageEnabled is false', () => {
+    expect(computeDisplayPct({ ...base, overageEnabled: false, overageUsed: 10 })).toBe(70);
+  });
+
+  it('returns 110 when 10 of 100 quota used as overage', () => {
+    expect(computeDisplayPct({ ...base, usedPct: 100, overageEnabled: true, overageUsed: 10, quota: 100 })).toBe(110);
+  });
+
+  it('rounds the overage percentage', () => {
+    // 5 overage out of 300 quota = 1.667% overage → rounds to 102
+    expect(computeDisplayPct({ ...base, usedPct: 100, overageEnabled: true, overageUsed: 5, quota: 300 })).toBe(102);
+  });
+
+  it('handles quota of 0 by falling back to usedPct', () => {
+    expect(computeDisplayPct({ ...base, usedPct: 100, overageEnabled: true, overageUsed: 10, quota: 0 })).toBe(100);
   });
 });

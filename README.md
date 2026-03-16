@@ -27,6 +27,7 @@
 | `25%`          | Normal usage                                       |
 | `75%` (yellow) | Warning threshold reached                          |
 | `90%` (red)    | Critical threshold reached                         |
+| `111%` (red)   | Overage — actual usage exceeds                     |
 | `∞`            | Unlimited plan                                     |
 | `—`            | No premium quota data (plan has no tracked limit)  |
 | `⟳`            | Loading                                            |
