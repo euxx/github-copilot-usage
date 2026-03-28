@@ -1,8 +1,8 @@
 // @ts-nocheck
-'use strict';
+"use strict";
 
-const vscode = require('vscode');
-const { fetchUsage } = require('./api');
+const vscode = require("vscode");
+const { fetchUsage } = require("./api");
 
 /** @type {vscode.StatusBarItem} */
 let statusBarItem;
@@ -34,18 +34,18 @@ async function activate(context) {
   deactivated = false;
   // Right, 100.099999: position adjacent to chat.statusBarEntry (Copilot icon, priority 100.1)
   statusBarItem = vscode.window.createStatusBarItem(
-    'github-copilot-usage',
+    "github-copilot-usage",
     vscode.StatusBarAlignment.Right,
     100.099999,
   );
-  statusBarItem.name = 'GitHub Copilot Usage';
+  statusBarItem.name = "GitHub Copilot Usage";
   context.subscriptions.push(statusBarItem);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('githubCopilotUsage.refresh', () => refresh(false, true)),
-    vscode.commands.registerCommand('githubCopilotUsage.signIn', () => refresh(true, true)),
+    vscode.commands.registerCommand("githubCopilotUsage.refresh", () => refresh(false, true)),
+    vscode.commands.registerCommand("githubCopilotUsage.signIn", () => refresh(true, true)),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('githubCopilotUsage')) {
+      if (e.affectsConfiguration("githubCopilotUsage")) {
         resetTimer();
         refresh();
       }
@@ -85,7 +85,7 @@ async function refresh(promptSignIn = false, isManual = false) {
   try {
     let session;
     try {
-      session = await vscode.authentication.getSession('github', ['user:email', 'read:user'], {
+      session = await vscode.authentication.getSession("github", ["user:email", "read:user"], {
         silent: !doSignIn,
         createIfNone: doSignIn,
       });
@@ -115,30 +115,30 @@ async function refresh(promptSignIn = false, isManual = false) {
     const code = err?.code;
 
     // Any error that reached the server means we are online — clear offline state.
-    if (code !== 'NETWORK_ERROR' && code !== 'TIMEOUT') {
+    if (code !== "NETWORK_ERROR" && code !== "TIMEOUT") {
       isOffline = false;
       offlineSince = null;
       clearRecoveryTimer();
     }
 
-    if (code === 'AUTH') {
+    if (code === "AUTH") {
       showNoAuth();
-    } else if (code === 'FORBIDDEN') {
-      showError('Access denied — check Copilot subscription or org policy');
-    } else if (code === 'RATE_LIMIT') {
+    } else if (code === "FORBIDDEN") {
+      showError("Access denied — check Copilot subscription or org policy");
+    } else if (code === "RATE_LIMIT") {
       if (lastData) {
         // Keep last data but mark tooltip
         try {
           updateStatusBar(lastData, true);
         } catch {
-          renderStatus({ text: '$(alert)', tooltip: 'Copilot Usage: Rate limited' });
+          renderStatus({ text: "$(alert)", tooltip: "Copilot Usage: Rate limited" });
         }
       } else {
-        renderStatus({ text: '$(alert)', tooltip: 'Copilot Usage: Rate limited' });
+        renderStatus({ text: "$(alert)", tooltip: "Copilot Usage: Rate limited" });
       }
-    } else if (code === 'SERVER_ERROR') {
-      showError('API error (5xx)');
-    } else if (code === 'NETWORK_ERROR' || code === 'TIMEOUT') {
+    } else if (code === "SERVER_ERROR") {
+      showError("API error (5xx)");
+    } else if (code === "NETWORK_ERROR" || code === "TIMEOUT") {
       if (!isOffline) {
         isOffline = true;
         offlineSince = new Date();
@@ -148,12 +148,12 @@ async function refresh(promptSignIn = false, isManual = false) {
         updateStatusBar(lastData);
       } else {
         renderStatus({
-          text: '$(alert)',
-          tooltip: 'Copilot Usage: Offline',
+          text: "$(alert)",
+          tooltip: "Copilot Usage: Offline",
         });
       }
     } else {
-      showError('Network / API error');
+      showError("Network / API error");
     }
   } finally {
     refreshInFlight = false;
@@ -181,7 +181,7 @@ function computeDisplayPct(data) {
   return data.usedPct;
 }
 
-const BILLING_URL = 'https://github.com/settings/billing/premium_requests_usage';
+const BILLING_URL = "https://github.com/settings/billing/premium_requests_usage";
 
 /**
  * @param {import('./api').UsageData} data
@@ -190,24 +190,27 @@ const BILLING_URL = 'https://github.com/settings/billing/premium_requests_usage'
 function updateStatusBar(data, isRateLimited = false) {
   const cfg = getConfig();
   const isStale = computeIsStale(isOffline, offlineSince);
-  const staleIcon = isStale ? ' $(warning)' : '';
+  const staleIcon = isStale ? " $(warning)" : "";
 
   if (data.noData) {
-    const md = new vscode.MarkdownString('', true);
-    md.isTrusted = { enabledCommands: ['githubCopilotUsage.refresh'] };
-    md.appendMarkdown('**GitHub Copilot Usage**\n\nPlan: ');
+    const md = new vscode.MarkdownString("", true);
+    md.isTrusted = { enabledCommands: ["githubCopilotUsage.refresh"] };
+    md.appendMarkdown("**GitHub Copilot Usage**\n\nPlan: ");
     md.appendText(data.plan);
     md.appendMarkdown(`\n\nNo premium quota &nbsp;[$(graph)](${BILLING_URL})\n\n`);
     if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
     md.appendMarkdown(`[$(refresh)](command:githubCopilotUsage.refresh)`);
-    if (isRateLimited) md.appendMarkdown('\n\nRate limit \u00b7 data may be outdated');
-    if (isStale || isOffline) md.appendMarkdown('\n\nOffline \u00b7 data may be outdated');
+    if (isRateLimited) md.appendMarkdown("\n\nRate limit \u00b7 data may be outdated");
+    if (isStale || isOffline) md.appendMarkdown("\n\nOffline \u00b7 data may be outdated");
     renderStatus({ text: `\u2014${staleIcon}`, tooltip: md });
     return;
   }
 
   if (data.unlimited) {
-    renderStatus({ text: `\u221e${staleIcon}`, tooltip: buildTooltip(data, isRateLimited, isOffline, isStale) });
+    renderStatus({
+      text: `\u221e${staleIcon}`,
+      tooltip: buildTooltip(data, isRateLimited, isOffline, isStale),
+    });
     return;
   }
 
@@ -215,9 +218,9 @@ function updateStatusBar(data, isRateLimited = false) {
   let color;
   if (cfg.thresholdEnabled) {
     if (pct >= cfg.thresholdCritical) {
-      color = new vscode.ThemeColor('editorError.foreground');
+      color = new vscode.ThemeColor("editorError.foreground");
     } else if (pct >= cfg.thresholdWarning) {
-      color = new vscode.ThemeColor('editorWarning.foreground');
+      color = new vscode.ThemeColor("editorWarning.foreground");
     }
   }
 
@@ -236,71 +239,75 @@ function updateStatusBar(data, isRateLimited = false) {
  * @returns {vscode.MarkdownString}
  */
 function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = false) {
-  const md = new vscode.MarkdownString('', true);
-  md.isTrusted = { enabledCommands: ['githubCopilotUsage.refresh'] };
-  md.appendMarkdown('**GitHub Copilot Usage**\n\nPlan: ');
+  const md = new vscode.MarkdownString("", true);
+  md.isTrusted = { enabledCommands: ["githubCopilotUsage.refresh"] };
+  md.appendMarkdown("**GitHub Copilot Usage**\n\nPlan: ");
   md.appendText(data.plan);
-  md.appendMarkdown('\n\n');
+  md.appendMarkdown("\n\n");
 
   if (data.unlimited) {
     md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
   } else {
-    md.appendMarkdown(`Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    md.appendMarkdown(
+      `Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
+    );
     if (data.overageEnabled && data.overageUsed > 0) {
       md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
     }
     const resetStr = data.resetDate.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-    md.appendMarkdown('Reset: ');
+    md.appendMarkdown("Reset: ");
     md.appendText(resetStr);
-    md.appendMarkdown('\n\n');
+    md.appendMarkdown("\n\n");
   }
 
   if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
-  md.appendMarkdown('[$(refresh)](command:githubCopilotUsage.refresh)');
+  md.appendMarkdown("[$(refresh)](command:githubCopilotUsage.refresh)");
   if (isRateLimited) {
-    md.appendMarkdown('\n\nRate limit \u00b7 data may be outdated');
+    md.appendMarkdown("\n\nRate limit \u00b7 data may be outdated");
   }
   if (isStale || isOfflineState) {
-    md.appendMarkdown('\n\nOffline \u00b7 data may be outdated');
+    md.appendMarkdown("\n\nOffline \u00b7 data may be outdated");
   }
   return md;
 }
 
 /** @param {Date} date @returns {string} yyyy-MM-dd HH:mm:ss, or HH:mm:ss if today */
 function formatTimestamp(date) {
-  const pad = (n) => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, "0");
   const now = new Date();
   const sameDay =
-    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
   const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   if (sameDay) return time;
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`;
 }
 
 function showLoading() {
-  renderStatus({ text: '$(sync~spin)', tooltip: 'Loading Copilot usage…' });
+  renderStatus({ text: "$(sync~spin)", tooltip: "Loading Copilot usage…" });
 }
 
 /** @param {string} message */
 function showError(message) {
   renderStatus({
-    text: '$(error)',
+    text: "$(error)",
     tooltip: `Copilot Usage: ${message}`,
-    color: new vscode.ThemeColor('editorError.foreground'),
+    color: new vscode.ThemeColor("editorError.foreground"),
   });
 }
 
 function showNoAuth() {
   renderStatus({
-    text: 'Sign in',
-    tooltip: 'Click to sign in with GitHub',
-    command: 'githubCopilotUsage.signIn',
+    text: "Sign in",
+    tooltip: "Click to sign in with GitHub",
+    command: "githubCopilotUsage.signIn",
   });
 }
 
@@ -377,15 +384,15 @@ function clearRecoveryTimer() {
 // ---------------------------------------------------------------------------
 
 function getConfig() {
-  const cfg = vscode.workspace.getConfiguration('githubCopilotUsage');
-  const rawWarning = cfg.get('threshold.warning', 75);
-  const rawCritical = cfg.get('threshold.critical', 90);
+  const cfg = vscode.workspace.getConfiguration("githubCopilotUsage");
+  const rawWarning = cfg.get("threshold.warning", 75);
+  const rawCritical = cfg.get("threshold.critical", 90);
   // Coerce to number and fall back to defaults if non-numeric (e.g. user entered a string)
   const warning = Number.isFinite(Number(rawWarning)) ? Number(rawWarning) : 75;
   const critical = Number.isFinite(Number(rawCritical)) ? Number(rawCritical) : 90;
   return {
-    refreshIntervalMinutes: cfg.get('refreshIntervalMinutes', 5),
-    thresholdEnabled: cfg.get('threshold.enabled', true),
+    refreshIntervalMinutes: cfg.get("refreshIntervalMinutes", 5),
+    thresholdEnabled: cfg.get("threshold.enabled", true),
     // Clamp warning to at most critical so misconfiguration (warning > critical) degrades gracefully.
     thresholdWarning: Math.min(warning, critical),
     thresholdCritical: critical,
@@ -412,10 +419,10 @@ module.exports = {
   computeDisplayPct,
   // Test-only: inspect and mutate module-level state.
   _setState: (s) => {
-    if ('isOffline' in s) isOffline = s.isOffline;
-    if ('offlineSince' in s) offlineSince = s.offlineSince;
-    if ('lastData' in s) lastData = s.lastData;
-    if ('lastUpdatedAt' in s) lastUpdatedAt = s.lastUpdatedAt;
+    if ("isOffline" in s) isOffline = s.isOffline;
+    if ("offlineSince" in s) offlineSince = s.offlineSince;
+    if ("lastData" in s) lastData = s.lastData;
+    if ("lastUpdatedAt" in s) lastUpdatedAt = s.lastUpdatedAt;
   },
   _getState: () => ({
     isOffline,

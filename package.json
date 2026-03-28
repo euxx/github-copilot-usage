@@ -1,35 +1,54 @@
 {
   "name": "github-copilot-usage",
   "displayName": "GitHub Copilot Usage",
-  "description": "Show GitHub Copilot Premium requests usage in the status bar.",
   "version": "0.4.2",
-  "author": "euxx",
+  "description": "Show GitHub Copilot Premium requests usage in the status bar.",
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "copilot",
+    "github",
+    "quota",
+    "status-bar",
+    "usage",
+    "vscode",
+    "vscode-extension"
+  ],
   "license": "MIT",
+  "author": "euxx",
   "repository": {
     "type": "git",
     "url": "https://github.com/euxx/github-copilot-usage"
   },
-  "icon": "images/icon.png",
-  "keywords": [
-    "github",
-    "copilot",
-    "usage",
-    "quota",
-    "status-bar",
-    "vscode",
-    "vscode-extension"
-  ],
   "publisher": "euxx",
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "main": "./src/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run ci",
+    "ci": "npm run test && npm run lint && npm run format:check",
+    "test": "vitest run",
+    "lint": "oxlint --deny-warnings src/ tests/",
+    "lint:fix": "oxlint --deny-warnings src/ tests/ --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "package": "npx @vscode/vsce package --no-dependencies",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "latest",
+    "lint-staged": "latest",
+    "oxfmt": "latest",
+    "oxlint": "latest",
+    "vitest": "latest"
+  },
+  "lint-staged": {
+    "*.{js,html,css,md,yml,yaml,json}": [
+      "oxfmt --write"
+    ],
+    "*.js": [
+      "oxlint --deny-warnings"
+    ]
+  },
   "contributes": {
     "commands": [
       {
@@ -77,27 +96,11 @@
       }
     }
   },
-  "scripts": {
-    "vscode:prepublish": "npm run ci",
-    "ci": "npm run test && npm run lint && npm run format:check",
-    "test": "vitest run",
-    "lint": "oxlint --deny-warnings src/ tests/",
-    "lint:fix": "oxlint --deny-warnings src/ tests/ --fix",
-    "format": "oxfmt --write .",
-    "format:check": "oxfmt --check .",
-    "package": "npx @vscode/vsce package --no-dependencies",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "husky": "latest",
-    "lint-staged": "latest",
-    "oxfmt": "latest",
-    "oxlint": "latest",
-    "prettier": "latest",
-    "vitest": "latest"
-  },
-  "lint-staged": {
-    "*.{js,html,css,md,yml,yaml,json}": ["oxfmt --write"],
-    "*.js": ["oxlint --deny-warnings"]
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
   }
 }

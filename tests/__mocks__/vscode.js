@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * Minimal vscode mock for Vitest.
@@ -6,7 +6,7 @@
  */
 
 class MarkdownString {
-  constructor(value = '') {
+  constructor(value = "") {
     this.value = value;
     this.isTrusted = false;
   }
@@ -38,7 +38,7 @@ const window = {
     show: () => {},
     hide: () => {},
     dispose: () => {},
-    text: '',
+    text: "",
     tooltip: undefined,
     color: undefined,
     command: undefined,
