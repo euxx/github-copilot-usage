@@ -81,19 +81,14 @@
     "vscode:prepublish": "npm run ci",
     "ci": "npm run test && npm run lint && npm run format:check",
     "test": "vitest run",
-    "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix",
-    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
+    "lint": "oxlint --deny-warnings src/ tests/",
+    "lint:fix": "oxlint --deny-warnings src/ tests/ --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "package": "npx @vscode/vsce package --no-dependencies",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@eslint/js": "latest",
-    "eslint": "latest",
-    "eslint-config-prettier": "latest",
-    "eslint-plugin-prettier": "latest",
-    "globals": "latest",
     "husky": "latest",
     "lint-staged": "latest",
     "oxfmt": "latest",
@@ -102,15 +97,7 @@
     "vitest": "latest"
   },
   "lint-staged": {
-    "*.{js,mjs}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.md": [
-      "prettier --write --prose-wrap preserve"
-    ],
-    "*.{yml,yaml}": [
-      "prettier --write"
-    ]
+    "*.{js,html,css,md,yml,yaml,json}": ["oxfmt --write"],
+    "*.js": ["oxlint --deny-warnings"]
   }
 }
