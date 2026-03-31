@@ -6,12 +6,16 @@ const {
   buildTooltip,
   computeIsStale,
   computeDisplayPct,
+  activate,
+  deactivate,
   _setState,
   _getState,
   _startRecoveryTimer,
   _clearRecoveryTimer,
   _resetTimer,
   _clearTimer,
+  _refresh,
+  _updateStatusBar,
 } = require("../src/extension");
 
 // ---------------------------------------------------------------------------
@@ -351,5 +355,455 @@ describe("computeDisplayPct", () => {
     expect(
       computeDisplayPct({ ...base, usedPct: 100, overageEnabled: true, overageUsed: 10, quota: 0 }),
     ).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper: vscode mock access and API mock
+// ---------------------------------------------------------------------------
+
+const vscode = require("vscode");
+
+// Mock fetch globally (same pattern as api.test.js) so the real fetchUsage runs
+// against controlled responses without needing vi.mock on the api module.
+const mockRes = (status, data) => ({
+  status,
+  ok: status >= 200 && status < 300,
+  json: () => Promise.resolve(data),
+});
+
+const API_BODY = {
+  copilot_plan: "individual",
+  quota_reset_date: "2026-04-01T00:00:00Z",
+  quota_snapshots: {
+    premium_interactions: {
+      entitlement: 300,
+      percent_remaining: 70,
+      unlimited: false,
+      overage_permitted: false,
+      overage_count: 0,
+    },
+  },
+};
+
+const BASE_USAGE = {
+  plan: "Pro",
+  unlimited: false,
+  noData: false,
+  used: 90,
+  quota: 300,
+  usedPct: 30,
+  overageEnabled: false,
+  overageUsed: 0,
+  resetDate: new Date("2026-04-01T00:00:00Z"),
+};
+
+/** Creates a minimal mock ExtensionContext. */
+function makeContext() {
+  const subs = [];
+  return { subscriptions: { push: (...args) => subs.push(...args), _items: subs } };
+}
+
+/** Installs vi.fn() spies on the vscode mock and returns the captured statusBarItem. */
+function installVscodeSpies() {
+  const barItem = {
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
+    text: "",
+    tooltip: undefined,
+    color: undefined,
+    command: undefined,
+    name: undefined,
+  };
+  vscode.window.createStatusBarItem = vi.fn(() => barItem);
+  vscode.commands.registerCommand = vi.fn(() => ({ dispose: vi.fn() }));
+  vscode.workspace.onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
+  vscode.authentication.getSession = vi.fn().mockResolvedValue(null);
+  return barItem;
+}
+
+function restoreVscodeMock() {
+  vscode.window.createStatusBarItem = () => ({
+    show: () => {},
+    hide: () => {},
+    dispose: () => {},
+    text: "",
+    tooltip: undefined,
+    color: undefined,
+    command: undefined,
+  });
+  vscode.commands.registerCommand = () => ({ dispose: () => {} });
+  vscode.workspace.onDidChangeConfiguration = () => ({ dispose: () => {} });
+  vscode.authentication.getSession = () => Promise.resolve(null);
+  vscode.workspace.getConfiguration = () => ({ get: (_key, def) => def });
+}
+
+/** Resets all module-level state to initial values. */
+function resetAllState() {
+  _setState({
+    isOffline: false,
+    offlineSince: null,
+    lastData: null,
+    lastUpdatedAt: null,
+    refreshInFlight: false,
+    pendingSignIn: false,
+    deactivated: false,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// activate / deactivate lifecycle (#4)
+// ---------------------------------------------------------------------------
+
+describe("activate", () => {
+  let barItem;
+  let ctx;
+
+  beforeEach(() => {
+    barItem = installVscodeSpies();
+    // Prevent actual refresh from making real calls; getSession returns null → showNoAuth path
+    vscode.authentication.getSession.mockResolvedValue(null);
+    ctx = makeContext();
+  });
+
+  afterEach(() => {
+    deactivate();
+    restoreVscodeMock();
+    resetAllState();
+  });
+
+  it("creates a status bar item with correct id, alignment and priority", async () => {
+    await activate(ctx);
+    expect(vscode.window.createStatusBarItem).toHaveBeenCalledWith(
+      "github-copilot-usage",
+      vscode.StatusBarAlignment.Right,
+      100.099999,
+    );
+  });
+
+  it("registers refresh and signIn commands", async () => {
+    await activate(ctx);
+    const calls = vscode.commands.registerCommand.mock.calls.map((c) => c[0]);
+    expect(calls).toContain("githubCopilotUsage.refresh");
+    expect(calls).toContain("githubCopilotUsage.signIn");
+  });
+
+  it("listens for configuration changes", async () => {
+    await activate(ctx);
+    expect(vscode.workspace.onDidChangeConfiguration).toHaveBeenCalled();
+  });
+
+  it("pushes disposables into context.subscriptions", async () => {
+    await activate(ctx);
+    // statusBarItem + 3 disposables (2 commands + 1 config listener)
+    expect(ctx.subscriptions._items.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("calls refresh on startup to attempt sign-in", async () => {
+    // getSession called with createIfNone: true (promptSignIn=true on startup)
+    vscode.authentication.getSession.mockResolvedValue(null);
+    await activate(ctx);
+    expect(vscode.authentication.getSession).toHaveBeenCalled();
+  });
+
+  it("shows sign-in status when no session exists", async () => {
+    vscode.authentication.getSession.mockResolvedValue(null);
+    await activate(ctx);
+    expect(barItem.text).toBe("Sign in");
+    expect(barItem.command).toBe("githubCopilotUsage.signIn");
+  });
+});
+
+describe("deactivate", () => {
+  let barItem;
+
+  beforeEach(() => {
+    barItem = installVscodeSpies();
+    vscode.authentication.getSession.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    restoreVscodeMock();
+    resetAllState();
+  });
+
+  it("hides the status bar item", async () => {
+    await activate(makeContext());
+    deactivate();
+    expect(barItem.hide).toHaveBeenCalled();
+  });
+
+  it("clears offline state", async () => {
+    await activate(makeContext());
+    _setState({ isOffline: true, offlineSince: new Date() });
+    deactivate();
+    const { isOffline } = _getState();
+    expect(isOffline).toBe(false);
+    // offlineSince is reset to null inside deactivate
+  });
+
+  it("prevents subsequent renders after deactivation", async () => {
+    await activate(makeContext());
+    deactivate();
+    barItem.show.mockClear();
+    // _refresh should be a no-op when deactivated
+    await _refresh();
+    expect(barItem.show).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// refresh (#4 continued)
+// ---------------------------------------------------------------------------
+
+describe("refresh", () => {
+  let barItem;
+
+  beforeEach(() => {
+    barItem = installVscodeSpies();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    deactivate();
+    restoreVscodeMock();
+    vi.unstubAllGlobals();
+    resetAllState();
+    _clearRecoveryTimer();
+    _clearTimer();
+  });
+
+  it("shows sign-in status when silent getSession returns null", async () => {
+    vscode.authentication.getSession.mockResolvedValue(null);
+    await activate(makeContext());
+    expect(barItem.text).toBe("Sign in");
+  });
+
+  it("fetches usage and updates status bar on successful auth", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok123" });
+    fetch.mockResolvedValue(mockRes(200, API_BODY));
+    await activate(makeContext());
+    expect(fetch).toHaveBeenCalled();
+    expect(barItem.text).toBe("30%");
+  });
+
+  it("stores lastData and clears offline after successful fetch", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockResolvedValue(mockRes(200, API_BODY));
+    await activate(makeContext());
+    const { isOffline } = _getState();
+    expect(isOffline).toBe(false);
+  });
+
+  it("shows sign-in on AUTH error (401)", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockResolvedValue(mockRes(401, {}));
+    await activate(makeContext());
+    expect(barItem.text).toBe("Sign in");
+  });
+
+  it("shows error on FORBIDDEN (403)", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockResolvedValue(mockRes(403, {}));
+    await activate(makeContext());
+    expect(barItem.text).toBe("$(error)");
+    expect(barItem.tooltip).toContain("Access denied");
+  });
+
+  it("shows alert on RATE_LIMIT (429) without prior data", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockResolvedValue(mockRes(429, {}));
+    await activate(makeContext());
+    expect(barItem.text).toBe("$(alert)");
+  });
+
+  it("shows error on SERVER_ERROR (5xx)", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockResolvedValue(mockRes(500, {}));
+    await activate(makeContext());
+    expect(barItem.text).toBe("$(error)");
+  });
+
+  it("enters offline state on NETWORK_ERROR", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    fetch.mockRejectedValue(new Error("Network failure"));
+    await activate(makeContext());
+    const { isOffline } = _getState();
+    expect(isOffline).toBe(true);
+  });
+
+  it("enters offline state on TIMEOUT (AbortError)", async () => {
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+    const abortErr = new Error("aborted");
+    abortErr.name = "AbortError";
+    fetch.mockRejectedValue(abortErr);
+    await activate(makeContext());
+    const { isOffline } = _getState();
+    expect(isOffline).toBe(true);
+  });
+
+  it("shows no-auth when user cancels sign-in (getSession throws)", async () => {
+    vscode.authentication.getSession.mockRejectedValue(new Error("User cancelled"));
+    await activate(makeContext());
+    expect(barItem.text).toBe("Sign in");
+  });
+
+  it("honours pending sign-in requested while in-flight", async () => {
+    vi.useFakeTimers();
+    let resolveSession;
+    vscode.authentication.getSession.mockImplementation(
+      () => new Promise((r) => (resolveSession = r)),
+    );
+    const activatePromise = activate(makeContext());
+    const secondRefresh = _refresh(true, true);
+    resolveSession(null);
+    await activatePromise;
+    // Flush only the pending setTimeout(0) — not the repeating setInterval
+    await vi.advanceTimersByTimeAsync(0);
+    await secondRefresh;
+    expect(vscode.authentication.getSession.mock.calls.length).toBeGreaterThanOrEqual(2);
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateStatusBar (#9)
+// ---------------------------------------------------------------------------
+
+describe("updateStatusBar", () => {
+  let barItem;
+
+  beforeEach(() => {
+    barItem = installVscodeSpies();
+    // Activate to create statusBarItem
+    vscode.authentication.getSession.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    deactivate();
+    restoreVscodeMock();
+    resetAllState();
+  });
+
+  it("renders dash for noData plan", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, noData: true });
+    expect(barItem.text).toBe("\u2014");
+  });
+
+  it("renders infinity symbol for unlimited plan", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, unlimited: true });
+    expect(barItem.text).toBe("\u221e");
+  });
+
+  it("renders percentage for normal quota", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, usedPct: 42 });
+    expect(barItem.text).toBe("42%");
+  });
+
+  it("applies warning color when pct >= warning threshold", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, usedPct: 80 });
+    expect(barItem.color).toBeDefined();
+    expect(barItem.color.id).toBe("editorWarning.foreground");
+  });
+
+  it("applies critical color when pct >= critical threshold", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, usedPct: 95 });
+    expect(barItem.color).toBeDefined();
+    expect(barItem.color.id).toBe("editorError.foreground");
+  });
+
+  it("includes stale warning icon when offline > 1 hour", async () => {
+    await activate(makeContext());
+    _setState({ isOffline: true, offlineSince: new Date(Date.now() - 2 * 60 * 60 * 1000) });
+    _updateStatusBar({ ...BASE_USAGE, usedPct: 30 });
+    expect(barItem.text).toContain("$(warning)");
+  });
+
+  it("includes rate-limit notice in tooltip when isRateLimited", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE }, true);
+    expect(barItem.tooltip.value).toContain("Rate limit");
+  });
+
+  it("displays overage percentage when overage is active", async () => {
+    await activate(makeContext());
+    _updateStatusBar({
+      ...BASE_USAGE,
+      usedPct: 100,
+      overageEnabled: true,
+      overageUsed: 30,
+      quota: 300,
+    });
+    expect(barItem.text).toBe("110%");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: error → recovery → back online (#10)
+// ---------------------------------------------------------------------------
+
+describe("integration: error → recovery → back online", () => {
+  let barItem;
+
+  beforeEach(() => {
+    barItem = installVscodeSpies();
+    vi.stubGlobal("fetch", vi.fn());
+    vscode.authentication.getSession.mockResolvedValue({ accessToken: "tok" });
+  });
+
+  afterEach(() => {
+    deactivate();
+    restoreVscodeMock();
+    vi.unstubAllGlobals();
+    resetAllState();
+    _clearRecoveryTimer();
+    _clearTimer();
+    vi.useRealTimers();
+  });
+
+  it("goes offline, starts recovery, then recovers on success", async () => {
+    // Step 1: first fetch fails with network error → goes offline
+    fetch.mockRejectedValue(new Error("Network failure"));
+    await activate(makeContext());
+
+    expect(_getState().isOffline).toBe(true);
+    expect(_getState().recoveryTimerActive).toBe(true);
+    expect(_getState().refreshTimerActive).toBe(false);
+
+    // Step 2: simulate another failed recovery attempt (via direct refresh call)
+    fetch.mockRejectedValue(new Error("Network failure"));
+    await _refresh();
+    expect(_getState().isOffline).toBe(true);
+    expect(_getState().recoveryTimerActive).toBe(true);
+
+    // Step 3: next attempt succeeds → goes back online
+    fetch.mockResolvedValue(mockRes(200, API_BODY));
+    await _refresh();
+
+    expect(_getState().isOffline).toBe(false);
+    expect(_getState().recoveryTimerActive).toBe(false);
+    expect(_getState().refreshTimerActive).toBe(true);
+    expect(barItem.text).toBe("30%");
+  });
+
+  it("preserves last data while offline", async () => {
+    // Step 1: successful fetch
+    fetch.mockResolvedValue(mockRes(200, API_BODY));
+    await activate(makeContext());
+    expect(barItem.text).toBe("30%");
+
+    // Step 2: next refresh fails with network error → enters offline but keeps data
+    fetch.mockRejectedValue(new Error("Network failure"));
+    await _refresh();
+
+    expect(_getState().isOffline).toBe(true);
+    // Status bar should still show 30% (preserved last data)
+    expect(barItem.text).toContain("30%");
   });
 });

@@ -423,16 +423,25 @@ module.exports = {
     if ("offlineSince" in s) offlineSince = s.offlineSince;
     if ("lastData" in s) lastData = s.lastData;
     if ("lastUpdatedAt" in s) lastUpdatedAt = s.lastUpdatedAt;
+    if ("refreshInFlight" in s) refreshInFlight = s.refreshInFlight;
+    if ("pendingSignIn" in s) pendingSignIn = s.pendingSignIn;
+    if ("deactivated" in s) deactivated = s.deactivated;
   },
   _getState: () => ({
     isOffline,
     offlineSince,
     recoveryTimerActive: recoveryActive,
     refreshTimerActive: !!refreshTimer,
+    refreshInFlight,
+    pendingSignIn,
+    deactivated,
   }),
   // Test-only: directly invoke timer lifecycle.
   _startRecoveryTimer: startRecoveryTimer,
   _clearRecoveryTimer: clearRecoveryTimer,
   _resetTimer: resetTimer,
   _clearTimer: clearTimer,
+  // Test-only: exercise core paths that depend on VS Code APIs.
+  _refresh: (...args) => refresh(...args),
+  _updateStatusBar: (...args) => updateStatusBar(...args),
 };
