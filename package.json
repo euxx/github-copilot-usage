@@ -25,8 +25,9 @@
   "main": "./src/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run ci",
-    "ci": "npm run test && npm run lint && npm run format:check",
+    "ci": "npm run syntax && npm run lint && npm run format:check && npm run test",
     "test": "vitest run",
+    "syntax": "node -e \"for(const f of require('fs').readdirSync('src').filter(n=>n.endsWith('.js')))require('child_process').execSync('node --check src/'+f,{stdio:'inherit'})\"",
     "lint": "oxlint --deny-warnings src/ tests/",
     "lint:fix": "oxlint --deny-warnings src/ tests/ --fix",
     "format": "oxfmt --write .",
