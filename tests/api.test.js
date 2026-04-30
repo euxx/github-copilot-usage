@@ -186,6 +186,29 @@ describe("fetchUsage", () => {
       await assertion;
       vi.useRealTimers();
     });
+
+    it("times out when response body (res.json) hangs past the 15s deadline", async () => {
+      vi.useFakeTimers();
+      // Headers come back fine, but the body never resolves until abort fires.
+      fetch.mockImplementation((_url, { signal }) => {
+        return Promise.resolve({
+          status: 200,
+          ok: true,
+          json: () =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener("abort", () => {
+                const err = new Error("The operation was aborted");
+                err.name = "AbortError";
+                reject(err);
+              });
+            }),
+        });
+      });
+      const assertion = expect(fetchUsage("token")).rejects.toMatchObject({ code: "TIMEOUT" });
+      await vi.advanceTimersByTimeAsync(15_001);
+      await assertion;
+      vi.useRealTimers();
+    });
   });
 
   describe("malformed response handling", () => {
