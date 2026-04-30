@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.3] - 2026-04-30
+
+### Fixed
+
+- **Status bar refresh deadlock** when the API response body stalls: the 15s timeout now covers `res.json()` body reading, not only the headers. Previously a hung response body could leave `refreshInFlight` stuck `true`, blocking all subsequent manual and automatic refreshes until VS Code reload.
+
 ## [0.4.2] - 2026-03-16
 
 ### Changed
