@@ -36,6 +36,11 @@
 | `25% ⚠`        | Last known data — offline for > 1 hour             |
 | `Sign in`      | Not signed in — click to sign in                   |
 
+## You may also like
+
+- <img src="https://github.com/euxx/claude-skills-for-copilot/raw/main/images/icon.png" width="20" align="absmiddle"> [**Claude Skills for Copilot**](https://marketplace.visualstudio.com/items?itemName=euxx.claude-skills-for-copilot) - Agent skills for GitHub Copilot: code review, feature dev, frontend design, and more
+- <img src="https://github.com/euxx/editor-tweaks/raw/main/images/icon.png" width="20" align="absmiddle"> [**Editor Tweaks**](https://marketplace.visualstudio.com/items?itemName=euxx.editor-tweaks) - A collection of small VS Code editor utilities packed into a single extension
+
 ## License
 
 Under the [MIT](LICENSE) License.
