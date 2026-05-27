@@ -91,10 +91,7 @@ async function refresh(promptSignIn = false, isManual = false) {
       });
     } catch {
       // User cancelled the sign-in prompt (createIfNone: true throws on cancel)
-      isOffline = false;
-      offlineSince = null;
-      showNoAuth();
-      return;
+      session = null;
     }
 
     if (!session) {
@@ -193,22 +190,27 @@ function updateStatusBar(data, isRateLimited = false) {
   const staleIcon = isStale ? " $(warning)" : "";
 
   if (data.noData) {
-    const md = new vscode.MarkdownString("", true);
-    md.isTrusted = { enabledCommands: ["githubCopilotUsage.refresh"] };
-    md.appendMarkdown("**GitHub Copilot Usage**\n\nPlan: ");
-    md.appendText(data.plan);
-    md.appendMarkdown(`\n\nNo premium quota &nbsp;[$(graph)](${BILLING_URL})\n\n`);
-    if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
-    md.appendMarkdown(`[$(refresh)](command:githubCopilotUsage.refresh)`);
-    if (isRateLimited) md.appendMarkdown("\n\nRate limit \u00b7 data may be outdated");
-    if (isStale || isOffline) md.appendMarkdown("\n\nOffline \u00b7 data may be outdated");
-    renderStatus({ text: `\u2014${staleIcon}`, tooltip: md });
+    renderStatus({
+      text: `—${staleIcon}`,
+      tooltip: buildTooltip(data, isRateLimited, isOffline, isStale),
+    });
+    return;
+  }
+
+  // Pooled exhaustion: enterprise unlimited plans signal "pool drained" via has_quota=false.
+  // Without overage, the user effectively can't use Copilot — show 100% red instead of ∞.
+  if (data.exhausted) {
+    renderStatus({
+      text: `100%${staleIcon}`,
+      tooltip: buildTooltip(data, isRateLimited, isOffline, isStale),
+      color: new vscode.ThemeColor("editorError.foreground"),
+    });
     return;
   }
 
   if (data.unlimited) {
     renderStatus({
-      text: `\u221e${staleIcon}`,
+      text: `∞${staleIcon}`,
       tooltip: buildTooltip(data, isRateLimited, isOffline, isStale),
     });
     return;
@@ -232,6 +234,36 @@ function updateStatusBar(data, isRateLimited = false) {
 }
 
 /**
+ * Append a "Reset: …" line, or nothing if resetDate is unknown — mirrors
+ * upstream's "hide the row when no source is available" behavior.
+ * @param {vscode.MarkdownString} md
+ * @param {Date | undefined} resetDate
+ */
+function appendResetLine(md, resetDate) {
+  if (!resetDate) return;
+  const resetStr = resetDate.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  md.appendMarkdown("Reset: ");
+  md.appendText(resetStr);
+  md.appendMarkdown("\n\n");
+}
+
+/**
+ * Mode-aware tooltip title — "Copilot Credits" under UBB, otherwise the
+ * legacy "Copilot Premium Requests".
+ * @param {boolean} tokenBasedBilling
+ * @returns {string}
+ */
+function tooltipTitle(tokenBasedBilling) {
+  return tokenBasedBilling ? "**Copilot Credits**" : "**Copilot Premium Requests**";
+}
+
+/**
  * @param {import('./api').UsageData} data
  * @param {boolean} isRateLimited
  * @param {boolean} [isOfflineState]
@@ -241,38 +273,46 @@ function updateStatusBar(data, isRateLimited = false) {
 function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = false) {
   const md = new vscode.MarkdownString("", true);
   md.isTrusted = { enabledCommands: ["githubCopilotUsage.refresh"] };
-  md.appendMarkdown("**GitHub Copilot Usage**\n\nPlan: ");
+  md.appendMarkdown(`${tooltipTitle(data.tokenBasedBilling)}\n\nPlan: `);
   md.appendText(data.plan);
   md.appendMarkdown("\n\n");
 
-  if (data.unlimited) {
+  // Four quota-display states:
+  if (data.noData) {
+    // 1. No quota assigned: free/CFI plans without a premium counter
+    // Title already names the unit (Credits vs Premium requests); body just states absence.
+    md.appendMarkdown(`No quota assigned &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    appendResetLine(md, data.resetDate); // no-op when server provided no reset source
+  } else if (data.exhausted) {
+    // 2. Pool drained: hard error state, but show reset so user knows when access returns
+    md.appendMarkdown(`Quota: Unlimited · pool exhausted &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    appendResetLine(md, data.resetDate);
+  } else if (data.unlimited) {
+    // 3. Plain unlimited: no counter, no reset
     md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
   } else {
+    // 4. Counted plan: show used/quota and (optional) overage.
+    // Title already names the unit (Credits vs Premium requests), so the
+    // count line uses a neutral "Used:" label and skips the unit suffix.
     md.appendMarkdown(
       `Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
     );
     if (data.overageEnabled && data.overageUsed > 0) {
-      md.appendMarkdown(`Overage: ${data.overageUsed} requests\n\n`);
+      const overageLine = data.tokenBasedBilling
+        ? `Additional credits: ${data.overageUsed}`
+        : `Overage: ${data.overageUsed} requests`;
+      md.appendMarkdown(`${overageLine}\n\n`);
     }
-    const resetStr = data.resetDate.toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    md.appendMarkdown("Reset: ");
-    md.appendText(resetStr);
-    md.appendMarkdown("\n\n");
+    appendResetLine(md, data.resetDate);
   }
 
   if (lastUpdatedAt) md.appendMarkdown(`Updated at ${formatTimestamp(lastUpdatedAt)} `);
   md.appendMarkdown("[$(refresh)](command:githubCopilotUsage.refresh)");
   if (isRateLimited) {
-    md.appendMarkdown("\n\nRate limit \u00b7 data may be outdated");
+    md.appendMarkdown("\n\nRate limit · data may be outdated");
   }
   if (isStale || isOfflineState) {
-    md.appendMarkdown("\n\nOffline \u00b7 data may be outdated");
+    md.appendMarkdown("\n\nOffline · data may be outdated");
   }
   return md;
 }

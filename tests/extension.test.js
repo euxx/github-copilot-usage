@@ -106,6 +106,8 @@ describe("buildTooltip", () => {
   const BASE_DATA = {
     plan: "Pro",
     unlimited: false,
+    hasQuota: true,
+    exhausted: false,
     noData: false,
     used: 90,
     quota: 300,
@@ -113,17 +115,50 @@ describe("buildTooltip", () => {
     overageEnabled: false,
     overageUsed: 0,
     resetDate: new Date("2026-04-01T00:00:00Z"),
+    tokenBasedBilling: false,
   };
 
   it("shows plan name and used/quota/pct for normal quota", () => {
     const md = buildTooltip(BASE_DATA, false);
     expect(md.value).toContain("Pro");
-    expect(md.value).toContain("90 / 300 (30%)");
+    expect(md.value).toContain("Used: 90 / 300 (30%)");
+  });
+
+  it("uses 'Copilot Premium Requests' title in legacy mode", () => {
+    const md = buildTooltip(BASE_DATA, false);
+    expect(md.value).toContain("**Copilot Premium Requests**");
+    expect(md.value).not.toContain("**Copilot Credits**");
+  });
+
+  it("uses 'Copilot Credits' title in token-based billing mode", () => {
+    const md = buildTooltip({ ...BASE_DATA, tokenBasedBilling: true }, false);
+    expect(md.value).toContain("**Copilot Credits**");
+    expect(md.value).not.toContain("**Copilot Premium Requests**");
   });
 
   it("shows Unlimited for unlimited plan", () => {
     const md = buildTooltip({ ...BASE_DATA, unlimited: true }, false);
     expect(md.value).toContain("Unlimited");
+  });
+
+  it("shows 'pool exhausted' when data.exhausted is true", () => {
+    const data = { ...BASE_DATA, unlimited: true, hasQuota: false, exhausted: true };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("pool exhausted");
+    expect(md.value).toContain("Reset:"); // pool-exhausted users need to see the reset date
+  });
+
+  it("shows plain Unlimited when hasQuota=false but overage is enabled (exhausted=false)", () => {
+    const data = {
+      ...BASE_DATA,
+      unlimited: true,
+      hasQuota: false,
+      overageEnabled: true,
+      exhausted: false,
+    };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("Quota: Unlimited");
+    expect(md.value).not.toContain("pool exhausted");
   });
 
   it("includes rate-limit notice when isRateLimited is true", () => {
@@ -159,9 +194,21 @@ describe("buildTooltip", () => {
     expect(md.value).toContain("Overage: 5 requests");
   });
 
+  it("uses 'Additional credits' label for overage in UBB mode", () => {
+    const data = { ...BASE_DATA, tokenBasedBilling: true, overageEnabled: true, overageUsed: 5 };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("Additional credits: 5");
+    expect(md.value).not.toContain("Overage:");
+  });
+
   it("omits overage section when overageUsed is 0", () => {
     const md = buildTooltip(BASE_DATA, false);
     expect(md.value).not.toContain("Overage");
+  });
+
+  it("omits Reset row when resetDate is undefined", () => {
+    const md = buildTooltip({ ...BASE_DATA, resetDate: undefined }, false);
+    expect(md.value).not.toContain("Reset:");
   });
 });
 
@@ -389,6 +436,8 @@ const API_BODY = {
 const BASE_USAGE = {
   plan: "Pro",
   unlimited: false,
+  hasQuota: true,
+  exhausted: false,
   noData: false,
   used: 90,
   quota: 300,
@@ -396,6 +445,7 @@ const BASE_USAGE = {
   overageEnabled: false,
   overageUsed: 0,
   resetDate: new Date("2026-04-01T00:00:00Z"),
+  tokenBasedBilling: false,
 };
 
 /** Creates a minimal mock ExtensionContext. */
@@ -569,6 +619,7 @@ describe("refresh", () => {
     deactivate();
     restoreVscodeMock();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
     resetAllState();
     _clearRecoveryTimer();
     _clearTimer();
@@ -692,9 +743,54 @@ describe("updateStatusBar", () => {
     expect(barItem.text).toBe("\u2014");
   });
 
+  it("noData tooltip shows reset date when server provided one", async () => {
+    await activate(makeContext());
+    _updateStatusBar({
+      ...BASE_USAGE,
+      noData: true,
+      resetDate: new Date("2026-07-01T00:00:00Z"),
+    });
+    expect(barItem.tooltip.value).toContain("Reset:");
+  });
+
+  it("noData tooltip omits reset row when resetDate is undefined", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, noData: true, resetDate: undefined });
+    expect(barItem.tooltip.value).not.toContain("Reset:");
+  });
+
+  it("noData tooltip uses 'Copilot Credits' title in UBB mode", async () => {
+    // Regression guard for the simplification that folded the noData branch into
+    // buildTooltip — the title must still switch on tokenBasedBilling.
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, noData: true, tokenBasedBilling: true });
+    expect(barItem.tooltip.value).toContain("**Copilot Credits**");
+    expect(barItem.tooltip.value).not.toContain("**Copilot Premium Requests**");
+  });
+
   it("renders infinity symbol for unlimited plan", async () => {
     await activate(makeContext());
     _updateStatusBar({ ...BASE_USAGE, unlimited: true });
+    expect(barItem.text).toBe("\u221e");
+  });
+
+  it("renders 100% red when data.exhausted is true (pooled entitlement drained)", async () => {
+    await activate(makeContext());
+    _updateStatusBar({ ...BASE_USAGE, unlimited: true, hasQuota: false, exhausted: true });
+    expect(barItem.text).toBe("100%");
+    expect(barItem.color).toBeDefined();
+    expect(barItem.color.id).toBe("editorError.foreground");
+  });
+
+  it("still renders \u221e when pooled hasQuota=false but overage is enabled (exhausted=false)", async () => {
+    await activate(makeContext());
+    _updateStatusBar({
+      ...BASE_USAGE,
+      unlimited: true,
+      hasQuota: false,
+      overageEnabled: true,
+      exhausted: false,
+    });
     expect(barItem.text).toBe("\u221e");
   });
 
