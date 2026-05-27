@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.0] - 2026-05-27
+
+### Added
+
+- **Token-based billing (UBB) support**: auto-detects GitHub's new credit-based billing mode via the `token_based_billing` field. The tooltip title switches between **Copilot Premium Requests** (legacy) and **Copilot Credits** (UBB), so the count line stays a familiar `Used: 90 / 300 (30%)`. Overage line still labels its unit (`Overage: 5 requests` vs `Additional credits: 5`).
+- **`individual_max` (Max) and `individual_edu` (Student) plans** in the plan-name map.
+- **Per-snapshot `quota_reset_at`** (Unix seconds) read with top priority under UBB; falls back to `quota_reset_date_utc` then `quota_reset_date`. Shared by all return paths so pooled-exhausted users still see real reset times.
+- **Precise `used` calculation** via `quota_remaining` when present (avoids float precision loss from percentage-based reverse calculation).
+- **Pooled entitlement exhaustion**: enterprise unlimited plans signaling `has_quota=false` (without overage) now display `100%` red instead of misleadingly showing `∞`. Tooltip surfaces "Quota: Unlimited · pool exhausted" with the reset date.
+
+### Changed
+
+- `entitlement` parse handles string values (`'300'`) emitted under UBB; `entitlement: '0'` (not unlimited) now correctly routes to the no-data state, matching upstream `parseQuotas` behavior. Missing `entitlement` (`undefined`) is preserved as a distinct case and stays on the normal path.
+
 ## [0.4.4] - 2026-04-30
 
 ### Changed

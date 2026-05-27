@@ -1,7 +1,7 @@
 # GitHub Copilot Usage
 
 <div>
-  <p>Shows Copilot Premium request quota usage in the VS Code status bar, right next to the Copilot icon.</p>
+  <p>Shows Copilot Premium request / Credit usage in the VS Code status bar, right next to the Copilot icon. Adapts to legacy or token-based billing.</p>
   <p>e.g., <code>25%</code> normal · <code>75%</code> yellow warning · <code>95%</code> red critical.</p>
 </div>
 
@@ -10,7 +10,7 @@
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
-- **Hover tooltip**: plan, used / quota, overage (if any), reset date, last-updated timestamp — with a refresh button and a link to [Premium request analytics](https://github.com/settings/billing/premium_requests_usage)
+- **Hover tooltip**: titled **Copilot Premium Requests** or **Copilot Credits** depending on the billing mode; shows plan, `Used: X / Y (Z%)`, overage, reset date, last-updated timestamp — with refresh button and link to [Premium request analytics](https://github.com/settings/billing/premium_requests_usage)
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 
@@ -22,19 +22,20 @@
 
 ## Status bar states
 
-| Display        | Meaning                                            |
-| -------------- | -------------------------------------------------- |
-| `25%`          | Normal usage                                       |
-| `75%` (yellow) | Warning threshold reached                          |
-| `90%` (red)    | Critical threshold reached                         |
-| `111%` (red)   | Overage — actual usage exceeds                     |
-| `∞`            | Unlimited plan                                     |
-| `—`            | No premium quota data (plan has no tracked limit)  |
-| `⟳`            | Loading                                            |
-| `✕`            | Server error or access denied                      |
-| `⚠`            | Offline or rate limited — no cached data available |
-| `25% ⚠`        | Last known data — offline for > 1 hour             |
-| `Sign in`      | Not signed in — click to sign in                   |
+| Display        | Meaning                                                         |
+| -------------- | --------------------------------------------------------------- |
+| `25%`          | Normal usage                                                    |
+| `75%` (yellow) | Warning threshold reached                                       |
+| `90%` (red)    | Critical threshold reached                                      |
+| `100%` (red)   | Pooled entitlement exhausted (enterprise unlimited, no overage) |
+| `111%` (red)   | Overage — actual usage exceeds                                  |
+| `∞`            | Unlimited plan                                                  |
+| `—`            | No premium quota data (plan has no tracked limit)               |
+| `⟳`            | Loading                                                         |
+| `✕`            | Server error or access denied                                   |
+| `⚠`            | Offline or rate limited — no cached data available              |
+| `25% ⚠`        | Last known data — offline for > 1 hour                          |
+| `Sign in`      | Not signed in — click to sign in                                |
 
 ## You may also like
 
