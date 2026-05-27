@@ -180,6 +180,16 @@ function computeDisplayPct(data) {
 
 const BILLING_URL = "https://github.com/settings/billing/premium_requests_usage";
 
+// Mirrors vscode's quotaCreditsFormatter (chatStatusDashboard.ts): keep up to 2 fractional
+// digits so a float like 195.9 stays 195.9 instead of being rounded to 196 here.
+// Upstream also has a compact formatter for >= 100k; we skip that — premium quotas don't
+// reach that magnitude in practice, and the credit dashboard handles compact rendering
+// in its own surface.
+const usageFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
 /**
  * @param {import('./api').UsageData} data
  * @param {boolean} [isRateLimited]
@@ -295,12 +305,12 @@ function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = fal
     // Title already names the unit (Credits vs Premium requests), so the
     // count line uses a neutral "Used:" label and skips the unit suffix.
     md.appendMarkdown(
-      `Used: ${data.used} / ${data.quota} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
+      `Used: ${usageFormatter.format(data.used)} / ${usageFormatter.format(data.quota)} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
     );
     if (data.overageEnabled && data.overageUsed > 0) {
       const overageLine = data.tokenBasedBilling
-        ? `Additional credits: ${data.overageUsed}`
-        : `Overage: ${data.overageUsed} requests`;
+        ? `Additional credits: ${usageFormatter.format(data.overageUsed)}`
+        : `Overage: ${usageFormatter.format(data.overageUsed)} requests`;
       md.appendMarkdown(`${overageLine}\n\n`);
     }
     appendResetLine(md, data.resetDate);

@@ -140,7 +140,7 @@ async function fetchUsage(token) {
       quotaRemaining !== undefined
         ? Math.max(0, entitlement - quotaRemaining)
         : entitlement > 0
-          ? Math.max(0, Math.round((entitlement * (100 - percentRemaining)) / 100))
+          ? Math.max(0, (entitlement * (100 - percentRemaining)) / 100)
           : 0;
 
     return { ...shared, used, usedPct, noData: false };

@@ -40,7 +40,7 @@ describe("fetchUsage", () => {
       const data = await fetchUsage("test-token");
       expect(data.plan).toBe("Pro");
       expect(data.usedPct).toBe(30); // 100 - 70
-      expect(data.used).toBe(90); // round(300 * 30 / 100)
+      expect(data.used).toBe(90); // 300 * 30 / 100
       expect(data.quota).toBe(300);
       expect(data.unlimited).toBe(false);
       expect(data.noData).toBe(false);
@@ -239,8 +239,28 @@ describe("fetchUsage", () => {
       };
       fetch.mockResolvedValue(mockRes(200, body));
       const data = await fetchUsage("test-token");
-      // entitlement=300, percent_remaining=70 → used = round(300 * 30 / 100) = 90
+      // entitlement=300, percent_remaining=70 → used = 300 * 30 / 100 = 90
       expect(data.used).toBe(90);
+    });
+
+    it("preserves fractional precision in `used` (matches vscode dashboard)", async () => {
+      // Upstream chatStatusDashboard stores `used` as a float and formats with
+      // Intl.NumberFormat({ maximumFractionDigits: 2 }) at render time. We mirror
+      // that by not pre-rounding here. Concrete case: entitlement=300, percent_remaining=34.7
+      // → used = 300 * 65.3 / 100 = 195.9 (vscode shows 195.9, not 196).
+      const body = {
+        ...BASE_BODY,
+        quota_snapshots: {
+          premium_interactions: {
+            ...BASE_BODY.quota_snapshots.premium_interactions,
+            percent_remaining: 34.7,
+            quota_remaining: undefined,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.used).toBeCloseTo(195.9, 5);
     });
   });
 

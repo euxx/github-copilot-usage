@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Token-based billing (UBB) support**: auto-detects GitHub's new credit-based billing mode via the `token_based_billing` field. The tooltip title switches between **Copilot Premium Requests** (legacy) and **Copilot Credits** (UBB), so the count line stays a familiar `Used: 90 / 300 (30%)`. Overage line still labels its unit (`Overage: 5 requests` vs `Additional credits: 5`).
 - **`individual_max` (Max) and `individual_edu` (Student) plans** in the plan-name map.
 - **Per-snapshot `quota_reset_at`** (Unix seconds) read with top priority under UBB; falls back to `quota_reset_date_utc` then `quota_reset_date`. Shared by all return paths so pooled-exhausted users still see real reset times.
-- **Precise `used` calculation** via `quota_remaining` when present (avoids float precision loss from percentage-based reverse calculation).
+- **Precise `used` calculation** via `quota_remaining` when present (avoids float precision loss from percentage-based reverse calculation). Tooltip formats `used`, `quota`, and overage values with `Intl.NumberFormat({ maximumFractionDigits: 2 })` to preserve fractional precision (e.g. `195.9` instead of `196`), matching upstream's `quotaCreditsFormatter`.
 - **Pooled entitlement exhaustion**: enterprise unlimited plans signaling `has_quota=false` (without overage) now display `100%` red instead of misleadingly showing `∞`. Tooltip surfaces "Quota: Unlimited · pool exhausted" with the reset date.
 
 ### Changed

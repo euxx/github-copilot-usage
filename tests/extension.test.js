@@ -124,6 +124,14 @@ describe("buildTooltip", () => {
     expect(md.value).toContain("Used: 90 / 300 (30%)");
   });
 
+  it("formats fractional `used` with up to 2 decimal places (matches vscode)", () => {
+    // Mirrors upstream Intl.NumberFormat({ maximumFractionDigits: 2 }) behavior:
+    // a float like 195.9 is preserved instead of being rounded to 196.
+    const data = { ...BASE_DATA, used: 195.9, usedPct: 65.3 };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("Used: 195.9 / 300 (65.3%)");
+  });
+
   it("uses 'Copilot Premium Requests' title in legacy mode", () => {
     const md = buildTooltip(BASE_DATA, false);
     expect(md.value).toContain("**Copilot Premium Requests**");
