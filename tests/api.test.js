@@ -319,7 +319,7 @@ describe("fetchUsage", () => {
       const data = await fetchUsage("test-token");
       expect(data.unlimited).toBe(true);
       expect(data.hasQuota).toBe(false);
-      // Pooled drained without overage → exhausted is true
+      // Pooled drained (has_quota=false) → exhausted is true
       expect(data.exhausted).toBe(true);
       // Pooled-exhausted users must still get the real server reset time,
       // NOT a synthesized next-month fallback.
@@ -354,7 +354,9 @@ describe("fetchUsage", () => {
       expect(data.resetDate).toEqual(new Date("2026-08-01T00:00:00Z"));
     });
 
-    it("sets exhausted=false when pooled hasQuota=false but overage is permitted", async () => {
+    it("sets exhausted=true when pooled hasQuota=false even if overage is permitted", async () => {
+      // has_quota=false on a pooled (unlimited) plan is the authoritative
+      // "org budget blocked" signal and overrides overage — mirrors upstream #318831.
       const body = {
         copilot_plan: "enterprise",
         token_based_billing: true,
@@ -365,7 +367,7 @@ describe("fetchUsage", () => {
       fetch.mockResolvedValue(mockRes(200, body));
       const data = await fetchUsage("test-token");
       expect(data.hasQuota).toBe(false);
-      expect(data.exhausted).toBe(false);
+      expect(data.exhausted).toBe(true);
     });
 
     it("sets exhausted=false for plain unlimited (hasQuota=true)", async () => {

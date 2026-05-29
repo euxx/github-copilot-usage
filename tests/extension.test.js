@@ -156,17 +156,16 @@ describe("buildTooltip", () => {
     expect(md.value).toContain("Reset:"); // pool-exhausted users need to see the reset date
   });
 
-  it("shows plain Unlimited when hasQuota=false but overage is enabled (exhausted=false)", () => {
+  it("shows 'pool exhausted' even when overage is enabled (overage no longer rescues)", () => {
     const data = {
       ...BASE_DATA,
       unlimited: true,
       hasQuota: false,
       overageEnabled: true,
-      exhausted: false,
+      exhausted: true,
     };
     const md = buildTooltip(data, false);
-    expect(md.value).toContain("Quota: Unlimited");
-    expect(md.value).not.toContain("pool exhausted");
+    expect(md.value).toContain("pool exhausted");
   });
 
   it("includes rate-limit notice when isRateLimited is true", () => {
@@ -790,16 +789,17 @@ describe("updateStatusBar", () => {
     expect(barItem.color.id).toBe("editorError.foreground");
   });
 
-  it("still renders \u221e when pooled hasQuota=false but overage is enabled (exhausted=false)", async () => {
+  it("renders 100% red when pooled hasQuota=false even if overage is enabled", async () => {
     await activate(makeContext());
     _updateStatusBar({
       ...BASE_USAGE,
       unlimited: true,
       hasQuota: false,
       overageEnabled: true,
-      exhausted: false,
+      exhausted: true,
     });
-    expect(barItem.text).toBe("\u221e");
+    expect(barItem.text).toBe("100%");
+    expect(barItem.color.id).toBe("editorError.foreground");
   });
 
   it("renders percentage for normal quota", async () => {

@@ -20,7 +20,7 @@ const PLAN_MAP = {
  * @property {number} usedPct  - already-used percentage (0–100+)
  * @property {boolean} unlimited
  * @property {boolean} hasQuota  - false signals pooled-entitlement exhaustion (enterprise unlimited)
- * @property {boolean} exhausted  - derived: unlimited pool drained with no overage; consumers should signal a hard error state
+ * @property {boolean} exhausted  - derived: unlimited pool drained (has_quota=false); consumers should signal a hard error state. Overrides overage — mirrors upstream #318831.
  * @property {boolean} noData  - true when the plan has no premium interactions quota
  * @property {boolean} overageEnabled
  * @property {number} overageUsed
@@ -108,7 +108,12 @@ async function fetchUsage(token) {
     const unlimited = !!pi?.unlimited;
     const hasQuota = Boolean(pi?.has_quota ?? true);
     const overageEnabled = !!pi?.overage_permitted;
-    const exhausted = unlimited && !hasQuota && !overageEnabled;
+    // For pooled (unlimited) plans, has_quota=false is the authoritative "org budget
+    // exhausted / usage blocked" signal — it overrides overage. A Business/Enterprise
+    // member can't use Copilot once the org pool is blocked, even if overage is permitted.
+    // Mirrors upstream #318831 (chatStatusDashboard.ts / chatStatusEntry.ts): the
+    // `!additionalUsageEnabled` guard was dropped so hasQuota=false alone marks exhaustion.
+    const exhausted = unlimited && !hasQuota;
     const overageUsed = pi?.overage_count ?? 0;
 
     // Fields shared by both return shapes — keeps the per-branch returns focused
