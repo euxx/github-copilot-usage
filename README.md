@@ -1,6 +1,6 @@
 # GitHub Copilot Usage
 
-Show GitHub Copilot Premium Requests or Credits usage in the VS Code status bar, next to the Copilot icon. Supports both legacy and token-based billing.
+Show GitHub Copilot usage in the VS Code status bar, right next to the Copilot icon. Supports Premium Requests and Credits.
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue?logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=euxx.github-copilot-usage)
 
