@@ -1,16 +1,13 @@
 # GitHub Copilot Usage
 
-<div>
-  <p>Shows Copilot Premium request / Credit usage in the VS Code status bar, right next to the Copilot icon. Adapts to legacy or token-based billing.</p>
-  <p>e.g., <code>25%</code> normal · <code>75%</code> yellow warning · <code>95%</code> red critical.</p>
-</div>
+Show GitHub Copilot Premium Requests or Credits usage in the VS Code status bar, next to the Copilot icon. Supports both legacy and token-based billing.
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue?logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=euxx.github-copilot-usage)
 
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
-- **Hover tooltip**: titled **Copilot Premium Requests** or **Copilot Credits** depending on the billing mode; shows plan, `Used: X / Y (Z%)`, overage, reset date, last-updated timestamp — with refresh button and link to [Premium request analytics](https://github.com/settings/billing/premium_requests_usage)
+- **Hover tooltip**: shows plan, usage, overage, reset date, last update, refresh button, and [billing analytics](https://github.com/settings/billing/premium_requests_usage)
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 
@@ -28,9 +25,9 @@
 | `75%` (yellow) | Warning threshold reached                                       |
 | `90%` (red)    | Critical threshold reached                                      |
 | `100%` (red)   | Pooled entitlement exhausted (enterprise unlimited, no overage) |
-| `111%` (red)   | Overage — actual usage exceeds                                  |
+| `111%` (red)   | Overage — actual usage exceeds quota                            |
 | `∞`            | Unlimited plan                                                  |
-| `—`            | No premium quota data (plan has no tracked limit)               |
+| `—`            | No quota data to display                                        |
 | `⟳`            | Loading                                                         |
 | `✕`            | Server error or access denied                                   |
 | `⚠`            | Offline or rate limited — no cached data available              |
