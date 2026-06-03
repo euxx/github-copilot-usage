@@ -1,7 +1,7 @@
 {
   "name": "github-copilot-usage",
   "displayName": "GitHub Copilot Usage",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Show GitHub Copilot Premium requests / Credits usage in the status bar.",
   "categories": [
     "Other"

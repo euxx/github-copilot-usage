@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.1] - 2026-06-03
+
+### Fixed
+
+- Free token-based Copilot accounts now show their Credits usage instead of `—`. GitHub can report these accounts as `copilot_plan=individual` with `access_type_sku=free_limited_copilot`, while the usable Credits quota lives in `quota_snapshots.chat` instead of `quota_snapshots.premium_interactions`.
+
 ## [0.5.0] - 2026-05-27
 
 ### Added
