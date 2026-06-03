@@ -21,7 +21,7 @@ const PLAN_MAP = {
  * @property {boolean} unlimited
  * @property {boolean} hasQuota  - false signals pooled-entitlement exhaustion (enterprise unlimited)
  * @property {boolean} exhausted  - derived: unlimited pool drained (has_quota=false); consumers should signal a hard error state. Overrides overage — mirrors upstream #318831.
- * @property {boolean} noData  - true when the plan has no premium interactions quota
+ * @property {boolean} noData  - true when the plan has no primary quota to display
  * @property {boolean} overageEnabled
  * @property {number} overageUsed
  * @property {string} plan
@@ -82,10 +82,12 @@ async function fetchUsage(token) {
       }
       throw makeError("API_ERROR", "Invalid JSON from GitHub API");
     }
-    const plan = PLAN_MAP[data.copilot_plan] ?? data.copilot_plan ?? "Unknown";
+    const plan = resolvePlan(data);
 
-    const pi = data?.quota_snapshots?.premium_interactions;
     const tokenBasedBilling = !!data.token_based_billing;
+    const quotaSnapshots = data?.quota_snapshots;
+    const premiumInteractions = quotaSnapshots?.premium_interactions;
+    const pi = selectPrimaryQuotaSnapshot(data, tokenBasedBilling, quotaSnapshots);
 
     const parsedEntitlement = parseNonNegativeNumber(pi?.entitlement);
     const entitlement = parsedEntitlement ?? 0;
@@ -107,14 +109,14 @@ async function fetchUsage(token) {
     const resetDate = parseResetDate(data, pi, tokenBasedBilling);
     const unlimited = !!pi?.unlimited;
     const hasQuota = Boolean(pi?.has_quota ?? true);
-    const overageEnabled = !!pi?.overage_permitted;
+    const overageEnabled = !!premiumInteractions?.overage_permitted;
     // For pooled (unlimited) plans, has_quota=false is the authoritative "org budget
     // exhausted / usage blocked" signal — it overrides overage. A Business/Enterprise
     // member can't use Copilot once the org pool is blocked, even if overage is permitted.
     // Mirrors upstream #318831 (chatStatusDashboard.ts / chatStatusEntry.ts): the
     // `!additionalUsageEnabled` guard was dropped so hasQuota=false alone marks exhaustion.
     const exhausted = unlimited && !hasQuota;
-    const overageUsed = pi?.overage_count ?? 0;
+    const overageUsed = premiumInteractions?.overage_count ?? 0;
 
     // Fields shared by both return shapes — keeps the per-branch returns focused
     // on the state-dependent fields (used, usedPct, noData).
@@ -169,6 +171,74 @@ function parseNonNegativeNumber(raw) {
 }
 
 /**
+ * @param {any} data
+ * @returns {string}
+ */
+function resolvePlan(data) {
+  if (isFreeLimitedCopilotSku(data)) return PLAN_MAP.free;
+  if (isFreeEducationalSku(data)) return PLAN_MAP.individual_edu;
+  return PLAN_MAP[data?.copilot_plan] ?? data?.copilot_plan ?? "Unknown";
+}
+
+/**
+ * VS Code renders Free + token-based billing credits from the chat snapshot;
+ * premium_interactions is zero/absent for that SKU and would make our compact
+ * status entry fall into the no-data dash state.
+ *
+ * @param {any} data
+ * @param {boolean} tokenBasedBilling
+ * @param {any} quotaSnapshots
+ * @returns {any}
+ */
+function selectPrimaryQuotaSnapshot(data, tokenBasedBilling, quotaSnapshots) {
+  const chat = quotaSnapshots?.chat;
+  if (isFreePlan(data) && tokenBasedBilling && hasPositiveEntitlement(chat)) {
+    return quotaSnapshots.chat;
+  }
+  return quotaSnapshots?.premium_interactions;
+}
+
+/**
+ * @param {any} data
+ * @returns {boolean}
+ */
+function isFreePlan(data) {
+  if (isFreeLimitedCopilotSku(data)) return true;
+  if (isFreeEducationalSku(data)) return false;
+  return data?.copilot_plan === "free";
+}
+
+/**
+ * GitHub may report Free CFI as copilot_plan=individual with
+ * access_type_sku=free_limited_copilot.
+ *
+ * @param {any} data
+ * @returns {boolean}
+ */
+function isFreeLimitedCopilotSku(data) {
+  return data?.access_type_sku === "free_limited_copilot";
+}
+
+/**
+ * VS Code maps this SKU to ChatEntitlement.EDU before checking copilot_plan.
+ *
+ * @param {any} data
+ * @returns {boolean}
+ */
+function isFreeEducationalSku(data) {
+  return data?.access_type_sku === "free_educational_quota";
+}
+
+/**
+ * @param {any} quotaSnapshot
+ * @returns {boolean}
+ */
+function hasPositiveEntitlement(quotaSnapshot) {
+  const entitlement = parseNonNegativeNumber(quotaSnapshot?.entitlement);
+  return entitlement !== undefined && entitlement > 0;
+}
+
+/**
  * Resolve resetDate by priority, returning the first source that yields a
  * valid Date — or `undefined` if none does. Mirrors upstream parseQuotas:
  *   1. UBB only: per-snapshot quota_reset_at (Unix seconds)
@@ -186,7 +256,7 @@ function parseNonNegativeNumber(raw) {
  * legitimate source of per-snapshot reset times. Behavior equivalent to upstream.
  *
  * @param {any} data  - top-level API response body
- * @param {any} pi    - quota_snapshots.premium_interactions (may be null/undefined)
+ * @param {any} pi    - selected primary quota snapshot (may be null/undefined)
  * @param {boolean} tokenBasedBilling
  * @returns {Date | undefined}
  */

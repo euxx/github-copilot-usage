@@ -285,6 +285,30 @@ describe("fetchUsage", () => {
       const data = await fetchUsage("test-token");
       expect(data.plan).toBe("team");
     });
+
+    it("maps free_limited_copilot SKU to Free before copilot_plan", async () => {
+      fetch.mockResolvedValue(
+        mockRes(200, {
+          ...BASE_BODY,
+          access_type_sku: "free_limited_copilot",
+          copilot_plan: "individual",
+        }),
+      );
+      const data = await fetchUsage("test-token");
+      expect(data.plan).toBe("Free");
+    });
+
+    it("maps free_educational_quota SKU to Student before copilot_plan", async () => {
+      fetch.mockResolvedValue(
+        mockRes(200, {
+          ...BASE_BODY,
+          access_type_sku: "free_educational_quota",
+          copilot_plan: "individual",
+        }),
+      );
+      const data = await fetchUsage("test-token");
+      expect(data.plan).toBe("Student");
+    });
   });
 
   describe("noData cases", () => {
@@ -424,6 +448,182 @@ describe("fetchUsage", () => {
       expect(data.noData).toBe(true);
       expect(data.quota).toBe(0);
       expect(data.tokenBasedBilling).toBe(true);
+    });
+
+    it("uses chat credits for Free token-based billing when premium_interactions has zero entitlement", async () => {
+      const body = {
+        copilot_plan: "free",
+        token_based_billing: true,
+        limited_user_reset_date: "2026-07-01T00:00:00Z",
+        quota_snapshots: {
+          chat: {
+            entitlement: "200",
+            percent_remaining: 100,
+            quota_remaining: "200",
+            unlimited: false,
+          },
+          completions: {
+            entitlement: "2000",
+            percent_remaining: 100,
+            quota_remaining: "2000",
+            unlimited: false,
+          },
+          premium_interactions: {
+            entitlement: "0",
+            percent_remaining: 0,
+            unlimited: false,
+            overage_permitted: false,
+            overage_count: 0,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(false);
+      expect(data.quota).toBe(200);
+      expect(data.used).toBe(0);
+      expect(data.usedPct).toBe(0);
+      expect(data.resetDate).toEqual(new Date("2026-07-01T00:00:00Z"));
+      expect(data.tokenBasedBilling).toBe(true);
+    });
+
+    it("uses chat credits when Free CFI is reported as individual plan", async () => {
+      const body = {
+        copilot_plan: "individual",
+        access_type_sku: "free_limited_copilot",
+        token_based_billing: true,
+        quota_reset_date_utc: "2026-07-01T00:00:00.000Z",
+        quota_snapshots: {
+          chat: {
+            entitlement: 200,
+            percent_remaining: 100,
+            quota_remaining: 200,
+            unlimited: false,
+            has_quota: false,
+          },
+          completions: {
+            entitlement: 2000,
+            percent_remaining: 99.8,
+            quota_remaining: 1996,
+            unlimited: false,
+            has_quota: false,
+          },
+          premium_interactions: {
+            entitlement: 0,
+            percent_remaining: 0,
+            quota_remaining: 0,
+            unlimited: false,
+            has_quota: false,
+            overage_permitted: false,
+            overage_count: 0,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(false);
+      expect(data.plan).toBe("Free");
+      expect(data.quota).toBe(200);
+      expect(data.used).toBe(0);
+      expect(data.usedPct).toBe(0);
+      expect(data.resetDate).toEqual(new Date("2026-07-01T00:00:00.000Z"));
+    });
+
+    it("does not use Free token-based chat snapshot without entitlement", async () => {
+      const body = {
+        copilot_plan: "free",
+        access_type_sku: "free_limited_copilot",
+        token_based_billing: true,
+        quota_reset_date_utc: "2026-07-01T00:00:00.000Z",
+        quota_snapshots: {
+          chat: {
+            percent_remaining: 98.7,
+            unlimited: false,
+          },
+          premium_interactions: {
+            percent_remaining: 0,
+            unlimited: false,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(true);
+      expect(data.quota).toBe(0);
+      expect(data.used).toBe(0);
+      expect(data.usedPct).toBe(0);
+    });
+
+    it("uses premium interactions when educational SKU conflicts with free copilot_plan", async () => {
+      const body = {
+        copilot_plan: "free",
+        access_type_sku: "free_educational_quota",
+        token_based_billing: true,
+        quota_snapshots: {
+          chat: {
+            entitlement: 200,
+            percent_remaining: 100,
+            quota_remaining: 200,
+            unlimited: false,
+          },
+          premium_interactions: {
+            entitlement: 300,
+            percent_remaining: 70,
+            quota_remaining: 210,
+            unlimited: false,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(false);
+      expect(data.plan).toBe("Student");
+      expect(data.quota).toBe(300);
+      expect(data.used).toBe(90);
+      expect(data.usedPct).toBe(30);
+    });
+
+    it("does not use chat quota for Free when token_based_billing is absent", async () => {
+      const body = {
+        copilot_plan: "free",
+        limited_user_reset_date: "2026-07-01T00:00:00Z",
+        quota_snapshots: {
+          chat: {
+            entitlement: "200",
+            percent_remaining: 100,
+            quota_remaining: "200",
+            unlimited: false,
+          },
+          premium_interactions: {
+            entitlement: "0",
+            percent_remaining: 0,
+            unlimited: false,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(true);
+      expect(data.quota).toBe(0);
+      expect(data.used).toBe(0);
+      expect(data.usedPct).toBe(0);
+      expect(data.tokenBasedBilling).toBe(false);
+    });
+
+    it("does not use legacy Free chat quota without token-based billing", async () => {
+      const body = {
+        copilot_plan: "free",
+        quota_reset_date: "2026-07-01T00:00:00Z",
+        monthly_quotas: { chat: 200, completions: 2000 },
+        limited_user_quotas: { chat: 200, completions: 2000 },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.noData).toBe(true);
+      expect(data.quota).toBe(0);
+      expect(data.used).toBe(0);
+      expect(data.usedPct).toBe(0);
+      expect(data.resetDate).toEqual(new Date("2026-07-01T00:00:00Z"));
     });
 
     it("returns noData when entitlement='0' even if percent_remaining is non-zero", async () => {
