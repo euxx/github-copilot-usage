@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.3] - 2026-06-18
+
+### Changed
+
+- Tooltip now shows the additional usage budget when GitHub returns `overage_entitlement`, e.g. `Additional credits: 5 / 50`, while preserving the previous display for older API responses.
+
 ## [0.5.1] - 2026-06-03
 
 ### Fixed
