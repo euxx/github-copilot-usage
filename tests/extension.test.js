@@ -114,6 +114,7 @@ describe("buildTooltip", () => {
     usedPct: 30,
     overageEnabled: false,
     overageUsed: 0,
+    overageLimit: 0,
     resetDate: new Date("2026-04-01T00:00:00Z"),
     tokenBasedBilling: false,
   };
@@ -201,10 +202,29 @@ describe("buildTooltip", () => {
     expect(md.value).toContain("Overage: 5 requests");
   });
 
+  it("includes overage budget when overageLimit is available", () => {
+    const data = { ...BASE_DATA, overageEnabled: true, overageUsed: 5, overageLimit: 50 };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("Overage: 5 / 50 requests");
+  });
+
   it("uses 'Additional credits' label for overage in UBB mode", () => {
     const data = { ...BASE_DATA, tokenBasedBilling: true, overageEnabled: true, overageUsed: 5 };
     const md = buildTooltip(data, false);
     expect(md.value).toContain("Additional credits: 5");
+    expect(md.value).not.toContain("Overage:");
+  });
+
+  it("includes additional credits budget in UBB mode when available", () => {
+    const data = {
+      ...BASE_DATA,
+      tokenBasedBilling: true,
+      overageEnabled: true,
+      overageUsed: 5,
+      overageLimit: 50,
+    };
+    const md = buildTooltip(data, false);
+    expect(md.value).toContain("Additional credits: 5 / 50");
     expect(md.value).not.toContain("Overage:");
   });
 
@@ -451,6 +471,7 @@ const BASE_USAGE = {
   usedPct: 30,
   overageEnabled: false,
   overageUsed: 0,
+  overageLimit: 0,
   resetDate: new Date("2026-04-01T00:00:00Z"),
   tokenBasedBilling: false,
 };

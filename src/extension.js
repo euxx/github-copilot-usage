@@ -308,9 +308,13 @@ function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = fal
       `Used: ${usageFormatter.format(data.used)} / ${usageFormatter.format(data.quota)} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
     );
     if (data.overageEnabled && data.overageUsed > 0) {
+      const overageValue =
+        data.overageLimit > 0
+          ? `${usageFormatter.format(data.overageUsed)} / ${usageFormatter.format(data.overageLimit)}`
+          : usageFormatter.format(data.overageUsed);
       const overageLine = data.tokenBasedBilling
-        ? `Additional credits: ${usageFormatter.format(data.overageUsed)}`
-        : `Overage: ${usageFormatter.format(data.overageUsed)} requests`;
+        ? `Additional credits: ${overageValue}`
+        : `Overage: ${overageValue} requests`;
       md.appendMarkdown(`${overageLine}\n\n`);
     }
     appendResetLine(md, data.resetDate);

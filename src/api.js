@@ -24,6 +24,7 @@ const PLAN_MAP = {
  * @property {boolean} noData  - true when the plan has no primary quota to display
  * @property {boolean} overageEnabled
  * @property {number} overageUsed
+ * @property {number} overageLimit
  * @property {string} plan
  * @property {Date | undefined} resetDate  - undefined when the server provided no reset source; consumers should hide the row
  * @property {boolean} tokenBasedBilling  - true = UBB (credits) mode, false = legacy premium-requests mode
@@ -117,6 +118,7 @@ async function fetchUsage(token) {
     // `!additionalUsageEnabled` guard was dropped so hasQuota=false alone marks exhaustion.
     const exhausted = unlimited && !hasQuota;
     const overageUsed = premiumInteractions?.overage_count ?? 0;
+    const overageLimit = premiumInteractions?.overage_entitlement ?? 0;
 
     // Fields shared by both return shapes — keeps the per-branch returns focused
     // on the state-dependent fields (used, usedPct, noData).
@@ -127,6 +129,7 @@ async function fetchUsage(token) {
       exhausted,
       overageEnabled,
       overageUsed,
+      overageLimit,
       plan,
       resetDate,
       tokenBasedBilling,

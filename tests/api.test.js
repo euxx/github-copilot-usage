@@ -20,6 +20,7 @@ const BASE_BODY = {
       unlimited: false,
       overage_permitted: false,
       overage_count: 0,
+      overage_entitlement: 0,
     },
   },
 };
@@ -78,6 +79,25 @@ describe("fetchUsage", () => {
       const data = await fetchUsage("test-token");
       expect(data.overageEnabled).toBe(true);
       expect(data.overageUsed).toBe(15);
+    });
+
+    it("sets overageLimit from overage_entitlement", async () => {
+      const body = {
+        ...BASE_BODY,
+        quota_snapshots: {
+          premium_interactions: {
+            ...BASE_BODY.quota_snapshots.premium_interactions,
+            overage_permitted: true,
+            overage_count: 3,
+            overage_entitlement: 50,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+      const data = await fetchUsage("test-token");
+      expect(data.overageEnabled).toBe(true);
+      expect(data.overageUsed).toBe(3);
+      expect(data.overageLimit).toBe(50);
     });
 
     it("returns resetDate=undefined when no reset source is available", async () => {
