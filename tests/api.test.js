@@ -1,6 +1,6 @@
 "use strict";
 
-const { fetchUsage } = require("../src/api");
+const { fetchUsage, clearQuotaSnapshotCache } = require("../src/api");
 
 // Helper: build a minimal mock Response
 const mockRes = (status, data) => ({
@@ -26,6 +26,7 @@ const BASE_BODY = {
 };
 
 beforeEach(() => {
+  clearQuotaSnapshotCache();
   vi.stubGlobal("fetch", vi.fn());
 });
 
@@ -174,6 +175,7 @@ describe("fetchUsage", () => {
         quota_snapshots: {
           premium_interactions: {
             ...BASE_BODY.quota_snapshots.premium_interactions,
+            credits_used: 12,
             quota_reset_at: 1751328000,
           },
         },
@@ -181,6 +183,7 @@ describe("fetchUsage", () => {
       fetch.mockResolvedValue(mockRes(200, body));
       const data = await fetchUsage("test-token");
       expect(data.resetDate).toEqual(new Date("2026-04-01T00:00:00Z"));
+      expect(data.creditsUsed).toBe(12);
     });
 
     it("prefers quota_reset_date_utc over quota_reset_date", async () => {
@@ -281,6 +284,332 @@ describe("fetchUsage", () => {
       fetch.mockResolvedValue(mockRes(200, body));
       const data = await fetchUsage("test-token");
       expect(data.used).toBeCloseTo(195.9, 5);
+    });
+  });
+
+  describe("credits used", () => {
+    it("parses credits_used and its snapshot reset outside token-based billing", async () => {
+      const resetAt = 1783260000;
+      const body = {
+        copilot_plan: "business",
+        quota_snapshots: {
+          premium_interactions: {
+            percent_remaining: 100,
+            unlimited: true,
+            has_quota: true,
+            credits_used: "1284",
+            quota_reset_at: resetAt,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+
+      const data = await fetchUsage("test-token");
+
+      expect(data.creditsUsed).toBe(1284);
+      expect(data.resetDate).toEqual(new Date(resetAt * 1000));
+      expect(data.tokenBasedBilling).toBe(false);
+    });
+
+    it("keeps zero credits_used as an explicit value", async () => {
+      const body = {
+        copilot_plan: "business",
+        quota_snapshots: {
+          premium_interactions: {
+            percent_remaining: 100,
+            unlimited: true,
+            credits_used: 0,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+
+      const data = await fetchUsage("test-token");
+
+      expect(data.creditsUsed).toBe(0);
+    });
+
+    it("uses the global reset when the pool is exhausted and credits used is hidden", async () => {
+      const body = {
+        copilot_plan: "business",
+        token_based_billing: false,
+        quota_reset_date: "2026-09-01T00:00:00Z",
+        quota_snapshots: {
+          premium_interactions: {
+            percent_remaining: 0,
+            unlimited: true,
+            has_quota: false,
+            credits_used: 1284,
+            quota_reset_at: 1783260000,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+
+      const data = await fetchUsage("test-token");
+
+      expect(data.exhausted).toBe(true);
+      expect(data.resetDate).toEqual(new Date("2026-09-01T00:00:00Z"));
+    });
+
+    it.each([undefined, -1, Number.POSITIVE_INFINITY, "not-a-number"])(
+      "returns undefined for invalid credits_used value %s",
+      async (creditsUsed) => {
+        const body = {
+          ...BASE_BODY,
+          quota_snapshots: {
+            premium_interactions: {
+              ...BASE_BODY.quota_snapshots.premium_interactions,
+              credits_used: creditsUsed,
+            },
+          },
+        };
+        fetch.mockResolvedValue(mockRes(200, body));
+
+        const data = await fetchUsage("test-token");
+
+        expect(data.creditsUsed).toBeUndefined();
+      },
+    );
+  });
+
+  describe("quota snapshot cache", () => {
+    const fullSnapshot = {
+      percent_remaining: 90,
+      unlimited: true,
+      has_quota: true,
+      quota_reset_at: 100,
+      entitlement: 1000,
+      quota_remaining: 900,
+      credits_used: 100,
+    };
+
+    it("preserves defined fields missing from a later snapshot for the same account", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: { premium_interactions: fullSnapshot },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: { percent_remaining: 80, unlimited: true },
+            },
+          }),
+        );
+
+      await fetchUsage("test-token");
+      const merged = await fetchUsage("test-token");
+
+      expect(merged).toMatchObject({
+        usedPct: 20,
+        used: 100,
+        quota: 1000,
+        unlimited: true,
+        hasQuota: true,
+        creditsUsed: 100,
+        resetDate: new Date(100 * 1000),
+      });
+    });
+
+    it("lets explicit zero and false values overwrite cached fields", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: { premium_interactions: fullSnapshot },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: {
+                percent_remaining: 0,
+                unlimited: false,
+                has_quota: false,
+                quota_reset_at: 200,
+                entitlement: 1000,
+                quota_remaining: 0,
+                credits_used: 0,
+              },
+            },
+          }),
+        );
+
+      await fetchUsage("test-token");
+      const updated = await fetchUsage("test-token");
+
+      expect(updated).toMatchObject({
+        quota: 1000,
+        used: 1000,
+        unlimited: false,
+        hasQuota: false,
+        creditsUsed: 0,
+      });
+    });
+
+    it("removes a finite zero-entitlement snapshot before a later partial response", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: {
+                percent_remaining: 90,
+                unlimited: false,
+                entitlement: 1000,
+                quota_remaining: 900,
+              },
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: {
+                percent_remaining: 0,
+                unlimited: false,
+                entitlement: 0,
+              },
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: {
+                percent_remaining: 80,
+                unlimited: false,
+              },
+            },
+          }),
+        );
+
+      await fetchUsage("test-token");
+      const zero = await fetchUsage("test-token");
+      const partial = await fetchUsage("test-token");
+
+      expect(zero).toMatchObject({ quota: 0, used: 0, noData: true });
+      expect(partial).toMatchObject({ quota: 0, used: 0, usedPct: 20, noData: false });
+    });
+
+    it("removes cached data when the whole snapshot disappears", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: { premium_interactions: fullSnapshot },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "account-a",
+          }),
+        );
+
+      await fetchUsage("test-token");
+      const removed = await fetchUsage("test-token");
+
+      expect(removed).toMatchObject({ quota: 0, used: 0, noData: true });
+      expect(removed.creditsUsed).toBeUndefined();
+    });
+
+    it("does not reuse cached fields after the session account changes", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "shared-tracking-id",
+            quota_snapshots: { premium_interactions: fullSnapshot },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "shared-tracking-id",
+            quota_snapshots: {
+              premium_interactions: { percent_remaining: 80, unlimited: false },
+            },
+          }),
+        );
+
+      await fetchUsage("test-token", "session-account-a");
+      const switched = await fetchUsage("test-token", "session-account-b");
+
+      expect(switched).toMatchObject({ quota: 0, used: 0, unlimited: false });
+      expect(switched.creditsUsed).toBeUndefined();
+    });
+
+    it("does not reuse cached fields after the API tracking identity changes", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "business",
+            analytics_tracking_id: "tracking-a",
+            quota_snapshots: { premium_interactions: fullSnapshot },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "tracking-b",
+            quota_snapshots: {
+              premium_interactions: { percent_remaining: 80, unlimited: false },
+            },
+          }),
+        );
+
+      await fetchUsage("test-token", "session-account");
+      const switched = await fetchUsage("test-token", "session-account");
+
+      expect(switched).toMatchObject({ quota: 0, used: 0, unlimited: false });
+      expect(switched.creditsUsed).toBeUndefined();
+    });
+
+    it("does not commit snapshot fields from a response that fails validation", async () => {
+      fetch
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: {
+                percent_remaining: "invalid",
+                unlimited: false,
+                entitlement: 999,
+              },
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockRes(200, {
+            copilot_plan: "individual",
+            analytics_tracking_id: "account-a",
+            quota_snapshots: {
+              premium_interactions: { percent_remaining: 80, unlimited: false },
+            },
+          }),
+        );
+
+      await expect(fetchUsage("test-token")).rejects.toMatchObject({ code: "API_ERROR" });
+      const next = await fetchUsage("test-token");
+
+      expect(next).toMatchObject({ quota: 0, used: 0, usedPct: 20 });
     });
   });
 

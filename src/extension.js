@@ -2,7 +2,7 @@
 "use strict";
 
 const vscode = require("vscode");
-const { fetchUsage } = require("./api");
+const { fetchUsage, clearQuotaSnapshotCache } = require("./api");
 
 /** @type {vscode.StatusBarItem} */
 let statusBarItem;
@@ -12,6 +12,8 @@ let refreshTimer;
 let lastData = null;
 /** @type {Date | null} */
 let lastUpdatedAt = null;
+/** @type {string | null} */
+let lastAccountId = null;
 /** @type {boolean} */
 let refreshInFlight = false;
 /** @type {boolean} */
@@ -60,6 +62,7 @@ function deactivate() {
   deactivated = true;
   isOffline = false;
   offlineSince = null;
+  clearAccountData();
   statusBarItem?.hide();
   clearTimer();
   clearRecoveryTimer();
@@ -97,11 +100,18 @@ async function refresh(promptSignIn = false, isManual = false) {
     if (!session) {
       isOffline = false;
       offlineSince = null;
+      clearAccountData();
       showNoAuth();
       return;
     }
 
-    const data = await fetchUsage(session.accessToken);
+    const accountId = session.account?.id ?? null;
+    if (lastAccountId !== null && lastAccountId !== accountId) {
+      clearAccountData();
+    }
+    lastAccountId = accountId;
+
+    const data = await fetchUsage(session.accessToken, accountId ?? undefined);
     lastData = data;
     lastUpdatedAt = new Date();
     isOffline = false;
@@ -119,6 +129,7 @@ async function refresh(promptSignIn = false, isManual = false) {
     }
 
     if (code === "AUTH") {
+      clearAccountData();
       showNoAuth();
     } else if (code === "FORBIDDEN") {
       showError("Access denied — check Copilot subscription or org policy");
@@ -159,6 +170,13 @@ async function refresh(promptSignIn = false, isManual = false) {
       setTimeout(() => refresh(), 0);
     }
   }
+}
+
+function clearAccountData() {
+  lastData = null;
+  lastUpdatedAt = null;
+  lastAccountId = null;
+  clearQuotaSnapshotCache();
 }
 
 // ---------------------------------------------------------------------------
@@ -298,8 +316,15 @@ function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = fal
     md.appendMarkdown(`Quota: Unlimited · pool exhausted &nbsp;[$(graph)](${BILLING_URL})\n\n`);
     appendResetLine(md, data.resetDate);
   } else if (data.unlimited) {
-    // 3. Plain unlimited: no counter, no reset
-    md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    // 3. Unlimited: keep the compact infinity status, but surface consumed credits when known.
+    if (data.creditsUsed !== undefined) {
+      md.appendMarkdown(
+        `Used: ${usageFormatter.format(data.creditsUsed)} / Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`,
+      );
+      appendResetLine(md, data.resetDate);
+    } else {
+      md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    }
   } else {
     // 4. Counted plan: show used/quota and (optional) overage.
     // Title already names the unit (Credits vs Premium requests), so the
@@ -477,6 +502,7 @@ module.exports = {
     if ("offlineSince" in s) offlineSince = s.offlineSince;
     if ("lastData" in s) lastData = s.lastData;
     if ("lastUpdatedAt" in s) lastUpdatedAt = s.lastUpdatedAt;
+    if ("lastAccountId" in s) lastAccountId = s.lastAccountId;
     if ("refreshInFlight" in s) refreshInFlight = s.refreshInFlight;
     if ("pendingSignIn" in s) pendingSignIn = s.pendingSignIn;
     if ("deactivated" in s) deactivated = s.deactivated;
@@ -489,6 +515,7 @@ module.exports = {
     refreshInFlight,
     pendingSignIn,
     deactivated,
+    lastAccountId,
   }),
   // Test-only: directly invoke timer lifecycle.
   _startRecoveryTimer: startRecoveryTimer,

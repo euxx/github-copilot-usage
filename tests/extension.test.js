@@ -115,6 +115,7 @@ describe("buildTooltip", () => {
     overageEnabled: false,
     overageUsed: 0,
     overageLimit: 0,
+    creditsUsed: undefined,
     resetDate: new Date("2026-04-01T00:00:00Z"),
     tokenBasedBilling: false,
   };
@@ -148,13 +149,33 @@ describe("buildTooltip", () => {
   it("shows Unlimited for unlimited plan", () => {
     const md = buildTooltip({ ...BASE_DATA, unlimited: true }, false);
     expect(md.value).toContain("Unlimited");
+    expect(md.value).not.toContain("Used:");
+    expect(md.value).not.toContain("Reset:");
+  });
+
+  it("shows credits used and reset time for an unlimited plan", () => {
+    const md = buildTooltip({ ...BASE_DATA, unlimited: true, creditsUsed: 1284 }, false);
+    expect(md.value).toContain("Used: 1,284 / Unlimited");
+    expect(md.value).toContain("Reset:");
+  });
+
+  it("shows an explicit zero credits used value for an unlimited plan", () => {
+    const md = buildTooltip({ ...BASE_DATA, unlimited: true, creditsUsed: 0 }, false);
+    expect(md.value).toContain("Used: 0 / Unlimited");
   });
 
   it("shows 'pool exhausted' when data.exhausted is true", () => {
-    const data = { ...BASE_DATA, unlimited: true, hasQuota: false, exhausted: true };
+    const data = {
+      ...BASE_DATA,
+      unlimited: true,
+      hasQuota: false,
+      exhausted: true,
+      creditsUsed: 1284,
+    };
     const md = buildTooltip(data, false);
     expect(md.value).toContain("pool exhausted");
     expect(md.value).toContain("Reset:"); // pool-exhausted users need to see the reset date
+    expect(md.value).not.toContain("Used: 1,284 / Unlimited");
   });
 
   it("shows 'pool exhausted' even when overage is enabled (overage no longer rescues)", () => {
@@ -524,6 +545,7 @@ function resetAllState() {
     offlineSince: null,
     lastData: null,
     lastUpdatedAt: null,
+    lastAccountId: null,
     refreshInFlight: false,
     pendingSignIn: false,
     deactivated: false,
@@ -722,6 +744,26 @@ describe("refresh", () => {
     expect(isOffline).toBe(true);
   });
 
+  it("does not show the previous account's data when the new account is offline", async () => {
+    vscode.authentication.getSession.mockResolvedValue({
+      accessToken: "token-a",
+      account: { id: "account-a" },
+    });
+    fetch.mockResolvedValue(mockRes(200, API_BODY));
+    await activate(makeContext());
+    expect(barItem.text).toBe("30%");
+
+    vscode.authentication.getSession.mockResolvedValue({
+      accessToken: "token-b",
+      account: { id: "account-b" },
+    });
+    fetch.mockRejectedValue(new Error("Network failure"));
+    await _refresh();
+
+    expect(_getState().lastAccountId).toBe("account-b");
+    expect(barItem.text).toBe("$(alert)");
+  });
+
   it("shows no-auth when user cancels sign-in (getSession throws)", async () => {
     vscode.authentication.getSession.mockRejectedValue(new Error("User cancelled"));
     await activate(makeContext());
@@ -798,8 +840,9 @@ describe("updateStatusBar", () => {
 
   it("renders infinity symbol for unlimited plan", async () => {
     await activate(makeContext());
-    _updateStatusBar({ ...BASE_USAGE, unlimited: true });
+    _updateStatusBar({ ...BASE_USAGE, unlimited: true, creditsUsed: 1284 });
     expect(barItem.text).toBe("\u221e");
+    expect(barItem.tooltip.value).toContain("Used: 1,284 / Unlimited");
   });
 
   it("renders 100% red when data.exhausted is true (pooled entitlement drained)", async () => {
