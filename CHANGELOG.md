@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.4] - 2026-07-31
+
+### Changed
+
+- Unlimited plans now show consumed credits in the tooltip when GitHub returns `credits_used`, for example `Used: 1,284 / Unlimited`, together with the relevant reset time. The status bar remains `∞`, and pooled-exhaustion warnings still take priority.
+
+### Fixed
+
+- Preserve defined quota snapshot fields across partial API responses for the same account and tracking identity, including explicit `0` and `false` updates.
+- Clear cached quota and offline usage data when snapshots disappear, authentication ends, or the active GitHub account changes, preventing stale values from leaking across accounts.
+
 ## [0.5.3] - 2026-06-18
 
 ### Changed
