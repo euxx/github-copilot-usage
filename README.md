@@ -7,7 +7,7 @@ Show GitHub Copilot usage in the VS Code status bar, right next to the Copilot i
 ## Features
 
 - **Status bar**: shows used percentage (`15%`), turns yellow/red near threshold
-- **Hover tooltip**: shows plan, usage, overage, reset date, last update, refresh button, and [billing analytics](https://github.com/settings/billing/premium_requests_usage)
+- **Hover tooltip**: shows plan, usage, overage, reset date, last update, refresh button, and [AI usage](https://github.com/settings/billing/ai_usage)
 - **Auto-refresh**: configurable interval (default 5 min)
 - **Zero config**: uses your existing VS Code GitHub account sign-in
 

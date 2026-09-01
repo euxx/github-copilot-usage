@@ -196,7 +196,7 @@ function computeDisplayPct(data) {
   return data.usedPct;
 }
 
-const BILLING_URL = "https://github.com/settings/billing/premium_requests_usage";
+const AI_USAGE_URL = "https://github.com/settings/billing/ai_usage";
 
 // Mirrors vscode's quotaCreditsFormatter (chatStatusDashboard.ts): keep up to 2 fractional
 // digits so a float like 195.9 stays 195.9 instead of being rounded to 196 here.
@@ -309,28 +309,30 @@ function buildTooltip(data, isRateLimited, isOfflineState = false, isStale = fal
   if (data.noData) {
     // 1. No quota assigned: free/CFI plans without a premium counter
     // Title already names the unit (Credits vs Premium requests); body just states absence.
-    md.appendMarkdown(`No quota assigned &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    md.appendMarkdown(`No quota assigned &nbsp;[$(graph)](${AI_USAGE_URL} "View AI usage")\n\n`);
     appendResetLine(md, data.resetDate); // no-op when server provided no reset source
   } else if (data.exhausted) {
     // 2. Pool drained: hard error state, but show reset so user knows when access returns
-    md.appendMarkdown(`Quota: Unlimited · pool exhausted &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+    md.appendMarkdown(
+      `Quota: Unlimited · pool exhausted &nbsp;[$(graph)](${AI_USAGE_URL} "View AI usage")\n\n`,
+    );
     appendResetLine(md, data.resetDate);
   } else if (data.unlimited) {
     // 3. Unlimited: keep the compact infinity status, but surface consumed credits when known.
     if (data.creditsUsed !== undefined) {
       md.appendMarkdown(
-        `Used: ${usageFormatter.format(data.creditsUsed)} / Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`,
+        `Used: ${usageFormatter.format(data.creditsUsed)} / Unlimited &nbsp;[$(graph)](${AI_USAGE_URL} "View AI usage")\n\n`,
       );
       appendResetLine(md, data.resetDate);
     } else {
-      md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${BILLING_URL})\n\n`);
+      md.appendMarkdown(`Quota: Unlimited &nbsp;[$(graph)](${AI_USAGE_URL} "View AI usage")\n\n`);
     }
   } else {
     // 4. Counted plan: show used/quota and (optional) overage.
     // Title already names the unit (Credits vs Premium requests), so the
     // count line uses a neutral "Used:" label and skips the unit suffix.
     md.appendMarkdown(
-      `Used: ${usageFormatter.format(data.used)} / ${usageFormatter.format(data.quota)} (${data.usedPct}%) &nbsp;[$(graph)](${BILLING_URL})\n\n`,
+      `Used: ${usageFormatter.format(data.used)} / ${usageFormatter.format(data.quota)} (${data.usedPct}%) &nbsp;[$(graph)](${AI_USAGE_URL} "View AI usage")\n\n`,
     );
     if (data.overageEnabled && data.overageUsed > 0) {
       const overageValue =

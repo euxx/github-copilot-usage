@@ -124,6 +124,8 @@ describe("buildTooltip", () => {
     const md = buildTooltip(BASE_DATA, false);
     expect(md.value).toContain("Pro");
     expect(md.value).toContain("Used: 90 / 300 (30%)");
+    expect(md.value).toContain("https://github.com/settings/billing/ai_usage");
+    expect(md.value).toContain('"View AI usage"');
   });
 
   it("formats fractional `used` with up to 2 decimal places (matches vscode)", () => {
