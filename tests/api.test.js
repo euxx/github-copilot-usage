@@ -135,6 +135,28 @@ describe("fetchUsage", () => {
       expect(data.tokenBasedBilling).toBe(true);
     });
 
+    it("ignores credits_used for a finite quota", async () => {
+      const body = {
+        ...BASE_BODY,
+        quota_snapshots: {
+          premium_interactions: {
+            ...BASE_BODY.quota_snapshots.premium_interactions,
+            entitlement: 13000,
+            quota_remaining: 807.7,
+            credits_used: 14517,
+            percent_remaining: 6.2,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+
+      const data = await fetchUsage("test-token");
+
+      expect(data.used).toBe(12192.3);
+      expect(data.quota).toBe(13000);
+      expect(data.usedPct).toBe(93.8);
+    });
+
     it("accepts quota_remaining as string", async () => {
       const body = {
         ...BASE_BODY,
@@ -168,22 +190,21 @@ describe("fetchUsage", () => {
       expect(data.resetDate).toEqual(new Date(resetAt * 1000));
     });
 
-    it("ignores quota_reset_at when token_based_billing is false (legacy mode)", async () => {
+    it("prefers quota_reset_at outside token-based billing", async () => {
+      const resetAt = 1751328000;
       const body = {
         ...BASE_BODY,
         quota_reset_date: "2026-04-01T00:00:00Z",
         quota_snapshots: {
           premium_interactions: {
             ...BASE_BODY.quota_snapshots.premium_interactions,
-            credits_used: 12,
-            quota_reset_at: 1751328000,
+            quota_reset_at: resetAt,
           },
         },
       };
       fetch.mockResolvedValue(mockRes(200, body));
       const data = await fetchUsage("test-token");
-      expect(data.resetDate).toEqual(new Date("2026-04-01T00:00:00Z"));
-      expect(data.creditsUsed).toBe(12);
+      expect(data.resetDate).toEqual(new Date(resetAt * 1000));
     });
 
     it("prefers quota_reset_date_utc over quota_reset_date", async () => {
@@ -229,7 +250,7 @@ describe("fetchUsage", () => {
     });
 
     it("falls back to quota_reset_date_utc when UBB quota_reset_at is non-finite", async () => {
-      // parseResetDate's UBB branch only returns when quota_reset_at is finite & > 0;
+      // parseResetDate only returns quota_reset_at when it is finite and positive;
       // otherwise it must fall through to the upstream-aligned fallback chain.
       const body = {
         ...BASE_BODY,
@@ -350,6 +371,30 @@ describe("fetchUsage", () => {
 
       expect(data.exhausted).toBe(true);
       expect(data.resetDate).toEqual(new Date("2026-09-01T00:00:00Z"));
+    });
+
+    it("preserves the snapshot reset for an exhausted token-based billing pool", async () => {
+      const resetAt = 1783260000;
+      const body = {
+        copilot_plan: "business",
+        token_based_billing: true,
+        quota_reset_date_utc: "2026-09-01T00:00:00Z",
+        quota_snapshots: {
+          premium_interactions: {
+            percent_remaining: 0,
+            unlimited: true,
+            has_quota: false,
+            credits_used: 1284,
+            quota_reset_at: resetAt,
+          },
+        },
+      };
+      fetch.mockResolvedValue(mockRes(200, body));
+
+      const data = await fetchUsage("test-token");
+
+      expect(data.exhausted).toBe(true);
+      expect(data.resetDate).toEqual(new Date(resetAt * 1000));
     });
 
     it.each([undefined, -1, Number.POSITIVE_INFINITY, "not-a-number"])(

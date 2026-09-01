@@ -126,11 +126,9 @@ async function fetchUsage(token, accountId) {
     // Mirrors upstream #318831 (chatStatusDashboard.ts / chatStatusEntry.ts): the
     // `!additionalUsageEnabled` guard was dropped so hasQuota=false alone marks exhaustion.
     const exhausted = unlimited && !hasQuota;
-    const resetDate = parseResetDate(
-      data,
-      pi,
-      tokenBasedBilling || (unlimited && !exhausted && creditsUsed !== undefined),
-    );
+    // Active quotas use their category-specific reset first. For exhausted pools, preserve
+    // the existing split: UBB uses the snapshot reset, while legacy billing uses the account reset.
+    const resetDate = parseResetDate(data, pi, !exhausted || tokenBasedBilling);
     const overageEnabled = !!premiumInteractions?.overage_permitted;
     const overageUsed = premiumInteractions?.overage_count ?? 0;
     const overageLimit = premiumInteractions?.overage_entitlement ?? 0;
@@ -163,6 +161,8 @@ async function fetchUsage(token, accountId) {
     const usedPct = Math.max(0, Math.round((100 - percentRemaining) * 10) / 10);
 
     const quotaRemaining = parseNonNegativeNumber(pi.quota_remaining);
+    // credits_used is aggregate usage from an unmetered pool and has no denominator.
+    // For finite quotas, quota_remaining shares the entitlement's basis.
     const used =
       quotaRemaining !== undefined
         ? Math.max(0, entitlement - quotaRemaining)
@@ -347,8 +347,9 @@ function hasPositiveEntitlement(quotaSnapshot) {
 
 /**
  * Resolve resetDate by priority, returning the first source that yields a
- * valid Date — or `undefined` if none does. Mirrors upstream parseQuotas:
- *   1. UBB or unlimited credits-used display: per-snapshot quota_reset_at (Unix seconds)
+ * valid Date — or `undefined` if none does. Matches upstream getQuotaReset
+ * with the account-level fallbacks parsed by parseQuotas:
+ *   1. Active selected quota: per-snapshot quota_reset_at (Unix seconds)
  *   2. Top-level quota_reset_date_utc
  *   3. Top-level quota_reset_date (local)
  *   4. Top-level limited_user_reset_date (Free SKU)
@@ -357,8 +358,8 @@ function hasPositiveEntitlement(quotaSnapshot) {
  * the "Resets …" line entirely. We follow the same shape and let consumers
  * decide what to render — simpler than synthesizing a misleading next-month date.
  *
- * Upstream also uses the per-snapshot reset for unlimited plans with
- * `credits_used`, even when the top-level UBB flag is false.
+ * For pooled-exhausted plans, the caller preserves the existing billing-mode split:
+ * UBB prefers the snapshot reset, while legacy billing uses the account-level reset.
  *
  * @param {any} data  - top-level API response body
  * @param {any} pi    - selected primary quota snapshot (may be null/undefined)
