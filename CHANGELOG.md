@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.5] - 2026-09-01
+
+### Changed
+
+- Tooltip analytics links now open GitHub's current [AI usage](https://github.com/settings/billing/ai_usage) page and expose a `View AI usage` hover title.
+
+### Fixed
+
+- Finite quotas now ignore aggregate `credits_used` values that have no entitlement denominator, continuing to derive usage from `quota_remaining` or `percent_remaining` in line with VS Code.
+- Active quotas now prefer their category-specific `quota_reset_at`; exhausted organization pools retain the existing reset behavior for legacy and token-based billing modes.
+
 ## [0.5.4] - 2026-07-31
 
 ### Changed
